@@ -74,6 +74,8 @@ def _user_management_permission():
 DELEGATED_PERMISSION_FIELDS = {
     "can_delete_bookings": [("bookings", "delete_booking")],
     "can_view_data_sheet": [("bookings", "view_data_sheet")],
+    "can_view_booking_change_audit": [("bookings", "view_booking_change_audit")],
+    "can_manage_invoice_customers": [("bookings", "manage_invoice_customers")],
     "can_view_user_activity": [("accounts", "view_user_activity")],
     "can_manage_billing": [("bookings", "view_billingrecord")],
     "can_manage_welcome_announcement": [("accounts", "manage_welcome_announcement")],
@@ -233,6 +235,8 @@ class AdminUserCreateForm(UserCreationForm):
     is_person_incharge = forms.BooleanField(required=False, label="Person In-charge")
     can_delete_bookings = forms.BooleanField(required=False, label="Delete Booking Access")
     can_view_data_sheet = forms.BooleanField(required=False, label="Data Sheet Access")
+    can_view_booking_change_audit = forms.BooleanField(required=False, label="Booking Change Audit Access")
+    can_manage_invoice_customers = forms.BooleanField(required=False, label="Sales Invoice Customer Master Access")
     can_view_user_activity = forms.BooleanField(required=False, label="User Activity Access")
     can_manage_billing = forms.BooleanField(required=False, label="Bill Invoice")
     can_manage_welcome_announcement = forms.BooleanField(required=False, label="Welcome Announcement")
@@ -283,6 +287,8 @@ class AdminUserCreateForm(UserCreationForm):
             "master_access",
             "can_delete_bookings",
             "can_view_data_sheet",
+            "can_view_booking_change_audit",
+            "can_manage_invoice_customers",
             "can_view_user_activity",
             "can_manage_billing",
             "can_manage_welcome_announcement",
@@ -308,6 +314,8 @@ class AdminUserCreateForm(UserCreationForm):
         self.fields["is_person_incharge"].widget.attrs["class"] = "form-check-input"
         self.fields["can_delete_bookings"].widget.attrs["class"] = "form-check-input"
         self.fields["can_view_data_sheet"].widget.attrs["class"] = "form-check-input"
+        self.fields["can_view_booking_change_audit"].widget.attrs["class"] = "form-check-input"
+        self.fields["can_manage_invoice_customers"].widget.attrs["class"] = "form-check-input"
         self.fields["can_view_user_activity"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_billing"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_welcome_announcement"].widget.attrs["class"] = "form-check-input"
@@ -329,6 +337,8 @@ class AdminUserCreateForm(UserCreationForm):
         master_access = self.cleaned_data.get("master_access") or []
         can_delete_bookings = bool(self.cleaned_data.get("can_delete_bookings"))
         can_view_data_sheet = bool(self.cleaned_data.get("can_view_data_sheet"))
+        can_view_booking_change_audit = bool(self.cleaned_data.get("can_view_booking_change_audit"))
+        can_manage_invoice_customers = bool(self.cleaned_data.get("can_manage_invoice_customers"))
         can_view_user_activity = bool(self.cleaned_data.get("can_view_user_activity"))
         can_manage_billing = bool(self.cleaned_data.get("can_manage_billing"))
         can_manage_welcome_announcement = bool(self.cleaned_data.get("can_manage_welcome_announcement"))
@@ -353,6 +363,14 @@ class AdminUserCreateForm(UserCreationForm):
                 data_sheet_permission = _permission("bookings", "view_data_sheet")
                 if data_sheet_permission:
                     selected_permissions.append(data_sheet_permission)
+            if can_view_booking_change_audit:
+                audit_permission = _permission("bookings", "view_booking_change_audit")
+                if audit_permission:
+                    selected_permissions.append(audit_permission)
+            if can_manage_invoice_customers:
+                permission = _permission("bookings", "manage_invoice_customers")
+                if permission:
+                    selected_permissions.append(permission)
             if can_view_user_activity:
                 user_activity_permission = _permission("accounts", "view_user_activity")
                 if user_activity_permission:
@@ -434,6 +452,8 @@ class AdminUserUpdateForm(forms.ModelForm):
     is_person_incharge = forms.BooleanField(required=False, label="Person In-charge")
     can_delete_bookings = forms.BooleanField(required=False, label="Delete Booking Access")
     can_view_data_sheet = forms.BooleanField(required=False, label="Data Sheet Access")
+    can_view_booking_change_audit = forms.BooleanField(required=False, label="Booking Change Audit Access")
+    can_manage_invoice_customers = forms.BooleanField(required=False, label="Sales Invoice Customer Master Access")
     can_view_user_activity = forms.BooleanField(required=False, label="User Activity Access")
     can_manage_billing = forms.BooleanField(required=False, label="Bill Invoice")
     can_manage_welcome_announcement = forms.BooleanField(required=False, label="Welcome Announcement")
@@ -483,6 +503,8 @@ class AdminUserUpdateForm(forms.ModelForm):
             "master_access",
             "can_delete_bookings",
             "can_view_data_sheet",
+            "can_view_booking_change_audit",
+            "can_manage_invoice_customers",
             "can_view_user_activity",
             "can_manage_billing",
             "can_manage_welcome_announcement",
@@ -510,6 +532,8 @@ class AdminUserUpdateForm(forms.ModelForm):
         self.fields["is_person_incharge"].widget.attrs["class"] = "form-check-input"
         self.fields["can_delete_bookings"].widget.attrs["class"] = "form-check-input"
         self.fields["can_view_data_sheet"].widget.attrs["class"] = "form-check-input"
+        self.fields["can_view_booking_change_audit"].widget.attrs["class"] = "form-check-input"
+        self.fields["can_manage_invoice_customers"].widget.attrs["class"] = "form-check-input"
         self.fields["can_view_user_activity"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_billing"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_welcome_announcement"].widget.attrs["class"] = "form-check-input"
@@ -534,6 +558,12 @@ class AdminUserUpdateForm(forms.ModelForm):
             ).exists()
             self.fields["can_view_data_sheet"].initial = self.instance.user_permissions.filter(
                 content_type__app_label="bookings", codename="view_data_sheet"
+            ).exists()
+            self.fields["can_view_booking_change_audit"].initial = self.instance.user_permissions.filter(
+                content_type__app_label="bookings", codename="view_booking_change_audit"
+            ).exists()
+            self.fields["can_manage_invoice_customers"].initial = self.instance.user_permissions.filter(
+                content_type__app_label="bookings", codename="manage_invoice_customers"
             ).exists()
             self.fields["can_view_user_activity"].initial = self.instance.user_permissions.filter(
                 content_type__app_label="accounts", codename="view_user_activity"
@@ -595,6 +625,8 @@ class AdminUserUpdateForm(forms.ModelForm):
         master_access = self.cleaned_data.get("master_access") or []
         can_delete_bookings = bool(self.cleaned_data.get("can_delete_bookings"))
         can_view_data_sheet = bool(self.cleaned_data.get("can_view_data_sheet"))
+        can_view_booking_change_audit = bool(self.cleaned_data.get("can_view_booking_change_audit"))
+        can_manage_invoice_customers = bool(self.cleaned_data.get("can_manage_invoice_customers"))
         can_view_user_activity = bool(self.cleaned_data.get("can_view_user_activity"))
         can_manage_billing = bool(self.cleaned_data.get("can_manage_billing"))
         can_manage_welcome_announcement = bool(self.cleaned_data.get("can_manage_welcome_announcement"))
@@ -676,6 +708,14 @@ class AdminUserUpdateForm(forms.ModelForm):
                 data_sheet_permission = _permission("bookings", "view_data_sheet")
                 if data_sheet_permission:
                     selected_permissions.append(data_sheet_permission)
+            if can_view_booking_change_audit:
+                audit_permission = _permission("bookings", "view_booking_change_audit")
+                if audit_permission:
+                    selected_permissions.append(audit_permission)
+            if can_manage_invoice_customers:
+                permission = _permission("bookings", "manage_invoice_customers")
+                if permission:
+                    selected_permissions.append(permission)
             if can_view_user_activity:
                 user_activity_permission = _permission("accounts", "view_user_activity")
                 if user_activity_permission:

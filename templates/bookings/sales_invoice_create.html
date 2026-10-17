@@ -1,0 +1,441 @@
+{% extends 'base.html' %}
+{% block title %}Create New Bill | LIMS{% endblock %}
+{% block content %}
+<style>
+  .bill-start-section { height: 100%; padding: 1rem; border: 1px solid #e1e4e8; border-radius: .5rem; background: #fff; }
+  .bill-start-section h5 { margin-bottom: .85rem; padding-bottom: .55rem; border-bottom: 1px solid #e5e7eb; font-size: 1rem; }
+  .bill-start-label { color: #536174; font-size: .82rem; }
+  .bill-summary-row { display:flex; justify-content:space-between; gap:1rem; padding:.35rem 0; border-bottom:1px solid #edf0f4; }
+  .bill-grand-total { background:#fff3a6; font-weight:700; padding:.6rem; }
+  .invoice-adjustments .bill-summary-row input { max-width:185px; }
+  .adjustment-row { display:grid; grid-template-columns:minmax(100px,1fr) minmax(220px,1.5fr) auto; align-items:center; gap:.65rem; padding:.4rem .55rem; border-bottom:1px solid #edf0f4; }
+  .adjustment-controls { display:flex; min-width:0; }
+  .adjustment-controls > * { border-radius:0; }
+  .adjustment-controls > :first-child { border-radius:.35rem 0 0 .35rem; }
+  .adjustment-controls > :last-child { border-radius:0 .35rem .35rem 0; }
+  .adjustment-controls input { min-width:50px; }
+  .adjustment-caption { border:1px dashed #ccd2dc; border-radius:.4rem; padding:.45rem .7rem; }
+  .round-off-row { display:flex; align-items:center; gap:.6rem; }
+  .round-off-row strong { margin-left:auto; }
+  .payment-choice { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.6rem; padding-top:.85rem; border-top:1px solid #e5e7eb; }
+  .payment-buttons { display:flex; flex-wrap:wrap; gap:.35rem; }
+  .payment-button input { position:absolute; opacity:0; }
+  .payment-button span { display:inline-block; border:1px solid #cbd5e1; border-radius:.5rem; padding:.45rem .8rem; color:#2563eb; cursor:pointer; }
+  .payment-button input:checked + span { color:#fff; background:#4b64c5; border-color:#4b64c5; }
+  .bill-start-label { color: #536174; font-size: .82rem; }
+  .bill-start-value { min-height: 1.5rem; overflow-wrap: anywhere; }
+  .bill-start-items th { white-space: nowrap; font-size: .78rem; }
+  .bill-start-items td { vertical-align: middle; }
+  .bill-start-items input, .bill-start-items select, .bill-start-items textarea { min-width: 82px; }
+  .bill-start-items .product-cell { min-width: 220px; }
+  .bill-start-items .product-cell textarea { min-width: 100%; margin-top: .35rem; }
+  .bill-start-items .total-row { background: #fffca5; font-weight: 700; }
+  .bill-start-items .item-quantity::-webkit-inner-spin-button,
+  .bill-start-items .item-quantity::-webkit-outer-spin-button,
+  .bill-start-items .item-rate::-webkit-inner-spin-button,
+  .bill-start-items .item-rate::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .bill-start-items .item-quantity,
+  .bill-start-items .item-rate { -moz-appearance: textfield; appearance: textfield; }
+  .bill-start-items .item-total { min-width: 78px; }
+</style>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-1">Create New Bill</h3>
+    <div class="text-muted">Choose the customer and enter items manually, or select passed samples from the Report Data Sheet.</div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
+  {% if perms.reports.view_report_data_sheet %}<a class="btn btn-outline-success" href="{% url 'reports:data_sheet' %}?outcome=pass">Select from Report Data Sheet</a>{% endif %}
+  {% if perms.bookings.manage_invoice_customers %}
+  <div class="d-flex gap-2 mt-2 mt-md-0">
+    <a class="btn btn-outline-primary" href="{% url 'bookings:invoice_customer_add' %}">Add Sales Invoice Customer</a>
+    <a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_customer_list' %}">Manage Invoice Customers</a>
+  </div>
+  {% endif %}
+  </div>
+</div>
+
+<section class="bill-start-section mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div><h5 class="mb-1">Saved Draft Bills</h5><div class="form-text">Drafts are listed here so you can find and continue a saved bill from this screen.</div></div>
+    <form method="get" class="d-flex gap-2">
+      <input class="form-control form-control-sm" type="search" name="draft_q" value="{{ draft_search_query }}" placeholder="Search draft bills" aria-label="Search draft bills">
+      <button class="btn btn-sm btn-outline-primary" type="submit">Search</button>
+    </form>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered bg-white align-middle mb-0">
+      <thead class="table-light"><tr><th>Bill No.</th><th>Date</th><th>Buyer</th><th>Total (₹)</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for draft in draft_invoices %}
+        <tr>
+          <td>{{ draft.invoice_number|default:"Draft" }}</td><td>{{ draft.invoice_date }}</td><td>{{ draft.buyer_snapshot.name|default:"—" }}</td><td>{{ draft.grand_total|floatformat:2 }}</td>
+          <td><div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'bookings:sales_invoice_edit' draft.pk %}">Continue Editing</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'bookings:sales_invoice_print' draft.pk %}">View / Print</a>
+            {% if perms.bookings.finalize_salesinvoice %}<form method="post" action="{% url 'bookings:sales_invoice_finalize' draft.pk %}" class="d-inline" onsubmit="return confirm('Pass this draft invoice?');">{% csrf_token %}<input type="hidden" name="return_to_list" value="1"><button type="submit" class="btn btn-sm btn-success">Pass</button></form>{% endif %}
+          </div></td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="text-center text-muted">{% if draft_search_query %}No drafts match that search.{% else %}There are no saved drafts yet.{% endif %}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<form method="post" id="sales-invoice-start-form">
+  {% csrf_token %}
+  {% if from_data_sheet %}<div class="alert alert-info py-2">{{ selected_sample_count }} selected sample{{ selected_sample_count|pluralize }} loaded below. This is the standard Create New Bill form; complete the item details and save as Draft or Pass.</div>{% endif %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="row g-3 mb-3">
+    <div class="col-lg-5">
+      <section class="bill-start-section">
+        <h5>Customer Information</h5>
+        <label class="form-label bill-start-label" for="{{ form.invoice_customer.id_for_label }}">Select from Customer Master <span class="text-danger">*</span></label>
+        <select name="{{ form.invoice_customer.html_name }}" id="{{ form.invoice_customer.id_for_label }}" class="form-select" required>
+          <option value="">---------</option>
+          {% for customer in form.fields.invoice_customer.queryset %}
+          <option value="{{ customer.pk }}" data-name="{{ customer.name }}" data-address="{{ customer.invoice_billing_address|default:'' }}" data-consignee-address="{{ customer.consignee_address|default:customer.invoice_billing_address }}" data-contact="{{ customer.contact_person|default:'' }}" data-phone="{{ customer.telephone|default:'' }}" data-email="{{ customer.email|default:'' }}" data-gstin="{{ customer.gstin|default:'' }}" data-pan="{{ customer.pan|default:'' }}" data-state="{{ customer.state_name|default:'' }}" data-state-code="{{ customer.state_code|default:'' }}" data-note="{{ customer.note|default:'' }}" {% if form.invoice_customer.value|stringformat:'s' == customer.pk|stringformat:'s' %}selected{% endif %}>{{ customer.name }}</option>
+          {% endfor %}
+        </select>
+        {{ form.invoice_customer.errors }}
+        <div class="row g-2 mt-2">
+          {% for field in buyer_form %}
+          <div class="{% if field.name == 'name' or field.name == 'address' or field.name == 'consignee_address' %}col-12{% else %}col-md-6{% endif %}">
+            <label class="form-label bill-start-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.name == 'name' %} <span class="text-danger">*</span>{% endif %}</label>
+            {{ field }}{{ field.errors }}
+          </div>
+          {% endfor %}
+        </div>
+        <div class="form-text mt-2">These details are saved as this bill’s snapshot and can be edited without changing Customer Master.</div>
+      </section>
+    </div>
+
+    <div class="col-lg-7">
+      <section class="bill-start-section">
+        <h5>Invoice Details</h5>
+        <div class="row g-2">
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.invoice_type.id_for_label }}">Invoice Type</label>{{ form.invoice_type }}{{ form.invoice_type.errors }}</div>
+          <div class="col-md-6"><div class="bill-start-label">Bill Number</div><div class="bill-start-value fw-semibold">Assigned automatically from Bill Number settings when saved.</div></div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.invoice_date.id_for_label }}">Invoice Date <span class="text-danger">*</span></label><input type="date" name="{{ form.invoice_date.html_name }}" id="{{ form.invoice_date.id_for_label }}" class="form-control" value="{{ form.invoice_date.value|date:'Y-m-d'|default:form.invoice_date.value }}" required>{{ form.invoice_date.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.claim_number.id_for_label }}">Claim No.</label>{{ form.claim_number }}{{ form.claim_number.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.due_date.id_for_label }}">Due Date</label>{{ form.due_date }}{{ form.due_date.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.challan_number.id_for_label }}">Challan No.</label>{{ form.challan_number }}{{ form.challan_number.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.challan_date.id_for_label }}">Challan Date</label>{{ form.challan_date }}{{ form.challan_date.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.po_number.id_for_label }}">P.O. No.</label>{{ form.po_number }}{{ form.po_number.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.po_date.id_for_label }}">P.O. Date</label>{{ form.po_date }}{{ form.po_date.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.lr_number.id_for_label }}">L.R. No.</label>{{ form.lr_number }}{{ form.lr_number.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.eway_number.id_for_label }}">E-Way No.</label>{{ form.eway_number }}{{ form.eway_number.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ form.delivery_mode.id_for_label }}">Delivery Mode</label>{{ form.delivery_mode }}{{ form.delivery_mode.errors }}</div>
+          <div class="col-md-6"><label class="form-label bill-start-label" for="{{ bank_form.selected_bank_detail.id_for_label }}">Bank</label>{{ bank_form.selected_bank_detail }}{{ bank_form.selected_bank_detail.errors }}</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="bill-start-section mb-3">
+    <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+      <h5 class="mb-0">Product Items</h5>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="add-invoice-item">＋ Add Item</button>
+    </div>
+    <div class="form-text mb-2" id="batch-sample-status" role="status" aria-live="polite">Enter a passed sample's batch number in its product row. The matching sample and tests will fill that row automatically.</div>
+    <div class="form-text mb-2">Line totals include GST and update from quantity, rate, discount, and tax. You can also edit a line total directly.</div>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered bill-start-items mb-2">
+        <thead class="table-light"><tr><th>Sr.</th><th>Product / Tests</th><th>HSN/SAC Code</th><th>Qty.</th><th>UOM</th><th>Batch No.</th><th>Price (₹)</th><th>Discount (%)</th><th>GST Type</th><th>GST %</th><th>Total incl. GST (₹)</th><th></th></tr></thead>
+        <tbody>
+          {% for row in item_rows %}
+          <tr class="invoice-item-row">
+            <td class="row-number">{{ forloop.counter }}</td>
+            <td class="product-cell"><input type="hidden" class="item-booking-id" name="item_booking_id" value="{{ row.item_booking_id|default:'' }}"><input class="form-control form-control-sm item-description" name="item_description" value="{{ row.item_description|default:'' }}" placeholder="Enter product name"><textarea class="form-control form-control-sm" name="item_note" rows="2" placeholder="Tests / item note">{{ row.item_note|default:'' }}</textarea></td>
+            <td><input class="form-control form-control-sm" name="item_hsn_sac" value="{{ row.item_hsn_sac|default:'' }}" placeholder="HSN/SAC"></td>
+            <td><input class="form-control form-control-sm item-quantity" name="item_quantity" value="{{ row.item_quantity|default:'1' }}" placeholder="Qty." type="number" min="0.001" step="0.001"></td>
+            <td><input class="form-control form-control-sm" name="item_uom" value="{{ row.item_uom|default:'NOS' }}" placeholder="UOM"></td>
+            <td><input class="form-control form-control-sm" name="item_batch_number" value="{{ row.item_batch_number|default:'' }}" placeholder="Batch No."></td>
+            <td><input class="form-control form-control-sm item-rate" name="item_rate" value="{{ row.item_rate|default:'' }}" placeholder="Price" type="number" min="0" step="0.01"></td>
+            <td><input class="form-control form-control-sm item-discount" name="item_discount" value="{{ row.item_discount|default:'' }}" placeholder="Discount %" type="number" min="0" max="100" step="0.01"></td>
+            <td><select class="form-select form-select-sm item-tax-type" name="item_tax_type"><option value="" {% if not row.item_tax_type %}selected{% endif %}>—</option><option value="split" {% if row.item_tax_type == 'split' %}selected{% endif %}>CGST + SGST</option><option value="integrated" {% if row.item_tax_type == 'integrated' %}selected{% endif %}>IGST</option></select></td>
+            <td><input class="form-control form-control-sm item-tax-rate" name="item_tax_rate" value="{{ row.item_tax_rate|default:'' }}" placeholder="GST %" type="number" min="0" max="100" step="0.01"></td>
+            <td><input class="form-control form-control-sm item-total text-end" type="number" min="0" step="0.01" value="0.00" aria-label="Line total including tax"></td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger remove-invoice-item" aria-label="Remove item">×</button></td>
+          </tr>
+          {% endfor %}
+          <tr class="total-row"><td colspan="6" class="text-end">Total Invoice Value</td><td class="text-end" id="items-subtotal">0.00</td><td class="text-end" id="items-discount">0.00</td><td colspan="2" class="text-end">Total</td><td class="text-end" id="items-total">0.00</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="form-text">Enter product and tax details manually. All item fields start blank; leave optional fields empty when they do not apply.</div>
+  </section>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><section class="bill-start-section"><h5>Bank Details for This Bill</h5>
+      <p class="text-muted small">Choose which saved bank details and QR options to print. Changes apply only to this bill.</p>
+      <details class="mt-3"><summary>Edit bank account details for this bill</summary><div class="pt-2">
+        {% for field in bank_form %}
+          {% if field.name == 'bank_1_account_name' %}<h6 class="mt-3">Bank Detail 1</h6>{% endif %}{% if field.name == 'bank_2_account_name' %}<h6 class="mt-3">Bank Detail 2</h6>{% endif %}{% if field.name == 'bank_3_account_name' %}<h6 class="mt-3">Bank Detail 3</h6>{% endif %}{% if field.name == 'bank_4_account_name' %}<h6 class="mt-3">Bank Detail 4</h6>{% endif %}{% if field.name == 'bank_5_account_name' %}<h6 class="mt-3">Bank Detail 5</h6>{% endif %}{% if field.name == 'bank_6_account_name' %}<h6 class="mt-3">Bank Detail 6</h6>{% endif %}
+          {% if field.name != 'selected_bank_detail' %}<div class="row align-items-center mb-2"><label class="col-sm-4 col-form-label bill-start-label" for="{{ field.id_for_label }}">{{ field.label }}</label><div class="col-sm-8">{{ field }}{{ field.errors }}</div></div>{% endif %}
+        {% endfor %}
+      </div></details>
+    </section></div>
+    <div class="col-lg-6"><section class="bill-start-section"><h5>Terms, Notes and Payment</h5><div class="row g-2">
+      <div class="col-12"><label class="form-label bill-start-label" for="{{ form.terms_title.id_for_label }}">Terms title</label>{{ form.terms_title }}{{ form.terms_title.errors }}</div>
+      <div class="col-12"><label class="form-label bill-start-label" for="{{ form.terms_detail.id_for_label }}">Terms detail</label>{{ form.terms_detail }}{{ form.terms_detail.errors }}</div>
+      <div class="col-12"><label class="form-label bill-start-label" for="{{ form.document_remarks.id_for_label }}">Document remarks</label>{{ form.document_remarks }}{{ form.document_remarks.errors }}</div>
+    </div></section></div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><section class="bill-start-section invoice-adjustments"><h5>Totals and Adjustments</h5>
+      <div class="bill-summary-row"><span>Taxable</span><strong>₹ <span id="items-taxable-total">0.00</span></strong></div>
+      <div class="bill-summary-row"><span><label for="{{ form.additional_charges.id_for_label }}">Add Additional Charge</label></span>{{ form.additional_charges }}{{ form.additional_charges.errors }}</div>
+      <div class="bill-summary-row"><span>Total Taxable</span><strong>₹ <span id="items-total-taxable">0.00</span></strong></div>
+      <div class="bill-summary-row"><span>Total Tax</span><strong>₹ <span id="items-tax-total">0.00</span></strong></div>
+      <div class="adjustment-row"><span class="adjustment-caption">TCS</span><div class="adjustment-controls"><select id="tcs-sign" class="form-select" aria-label="TCS add or deduct"><option value="add">+</option><option value="subtract">−</option></select>{{ form.tcs_rate }}{{ form.tcs_mode }}</div><strong>₹ <span id="items-tcs-total">0</span></strong></div>
+      {{ form.tcs_is_deduction.as_hidden }}
+      <div class="adjustment-row"><span class="adjustment-caption">Discount</span><div class="adjustment-controls"><select id="discount-sign" class="form-select" aria-label="Discount add or deduct"><option value="subtract">−</option><option value="add">+</option></select>{{ form.discount_amount }}{{ form.discount_mode }}</div><strong>₹ <span id="items-discount-total">0</span></strong></div>
+      {{ form.discount_is_addition.as_hidden }}
+      <div class="adjustment-row round-off-row"><label for="{{ form.round_off_enabled.id_for_label }}">Round Off</label>{{ form.round_off_enabled }}<strong>₹ <span id="items-round-off">0</span></strong></div>
+      <div class="bill-summary-row bill-grand-total"><span>Grand Total</span><strong>₹ <span id="items-grand-total">0.00</span></strong></div>
+      <div class="bill-summary-row"><span>Total in Words</span><strong id="items-total-words">Zero Rupees Only</strong></div>
+      <div class="payment-choice"><span>Payment Type <b class="text-danger">*</b></span><div class="payment-buttons">{% for value,label in form.fields.payment_type.choices %}<label class="payment-button payment-{{ value }}"><input type="radio" name="payment_type" value="{{ value }}" {% if form.payment_type.value == value or not form.payment_type.value and value == 'credit' %}checked{% endif %}><span>{{ label|upper }}</span></label>{% endfor %}</div>{{ form.payment_type.errors }}</div>
+    </section></div>
+    <div class="col-lg-6"><section class="bill-start-section"><h5>Invoice Notes</h5>
+      <div class="bill-start-label">Document / Number Remarks</div><div class="bill-start-value" id="invoice-note-preview">—</div>
+      <div class="bill-start-label mt-3">Customer note from master</div><div class="bill-start-value" id="customer-note-from-master">{{ selected_customer_note|default:'-'|linebreaksbr }}</div>
+      <div class="mt-3 text-muted small">Customer, bank, payment and terms values are saved with this invoice.</div>
+    </section></div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2">
+    <button class="btn btn-outline-primary" name="save_action" value="draft">Save as Draft</button>
+    {% if perms.bookings.finalize_salesinvoice %}<button class="btn btn-success" name="save_action" value="finalize">Save &amp; Pass</button>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'bookings:sales_invoice_list' %}">Back</a>
+  </div>
+</form>
+
+<script>
+(() => {
+  const select = document.getElementById("{{ form.invoice_customer.id_for_label }}");
+  const updateCustomer = () => {
+    const option = select && select.selectedOptions[0];
+    if (!option || !option.value) return;
+    const details = {
+      name: option.dataset.name,
+      address: option.dataset.address,
+      consignee_address: option.dataset.consigneeAddress,
+      contact_person: option.dataset.contact,
+      telephone: option.dataset.phone,
+      email: option.dataset.email,
+      gstin: option.dataset.gstin,
+      pan: option.dataset.pan,
+      state_name: option.dataset.state,
+      state_code: option.dataset.stateCode
+    };
+    Object.entries(details).forEach(([name, value]) => {
+      const field = document.getElementById(`id_${name}`);
+      if (field) field.value = value || "";
+    });
+    const note = document.getElementById("customer-note-from-master");
+    if (note) note.textContent = option.dataset.note || "-";
+  };
+  if (select) {
+    select.addEventListener("change", updateCustomer);
+  }
+  const remarks = document.getElementById("{{ form.document_remarks.id_for_label }}");
+  if (remarks) {
+    const notePreview = document.getElementById("invoice-note-preview");
+    notePreview.textContent = remarks.value || "—";
+    remarks.addEventListener("input", () => { notePreview.textContent = remarks.value || "—"; });
+  }
+  const itemBody = document.querySelector(".bill-start-items tbody");
+  const totalRow = itemBody && itemBody.querySelector(".total-row");
+  const numberWords = (number) => {
+    const small = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    if (number < 20) return small[number];
+    if (number < 100) return `${tens[Math.floor(number / 10)]}${number % 10 ? ` ${small[number % 10]}` : ""}`;
+    for (const [size, label] of [[10000000, "Crore"], [100000, "Lakh"], [1000, "Thousand"], [100, "Hundred"]]) {
+      if (number >= size) return `${numberWords(Math.floor(number / size))} ${label}${number % size ? ` ${numberWords(number % size)}` : ""}`;
+    }
+    return "";
+  };
+  const renumberItems = () => {
+    itemBody.querySelectorAll(".invoice-item-row").forEach((row, index) => {
+      row.querySelector(".row-number").textContent = index + 1;
+    });
+  };
+  const updateTotals = () => {
+    let subtotal = 0, discountTotal = 0, taxableTotal = 0, cgstTotal = 0, sgstTotal = 0, igstTotal = 0;
+    itemBody.querySelectorAll(".invoice-item-row").forEach((row) => {
+      const quantity = Number(row.querySelector(".item-quantity").value) || 0;
+      const rate = Number(row.querySelector(".item-rate").value) || 0;
+      const discountPercent = Math.min(100, Math.max(0, Number(row.querySelector(".item-discount").value) || 0));
+      const discount = quantity * rate * discountPercent / 100;
+      const taxRate = Number(row.querySelector(".item-tax-rate").value) || 0;
+      const taxable = Math.max(0, quantity * rate - discount);
+      const taxType = row.querySelector(".item-tax-type").value;
+      const tax = taxable * taxRate / 100;
+      if (taxType === "split") {
+        cgstTotal += tax / 2;
+        sgstTotal += tax / 2;
+      } else if (taxType === "integrated") {
+        igstTotal += tax;
+      }
+      subtotal += quantity * rate;
+      discountTotal += discount;
+      taxableTotal += taxable;
+      row.querySelector(".item-total").value = (taxable + tax).toFixed(2);
+    });
+    const taxTotal = cgstTotal + sgstTotal + igstTotal;
+    const tcsValue = Number(document.getElementById("{{ form.tcs_rate.id_for_label }}").value) || 0;
+    const tcsMode = document.getElementById("{{ form.tcs_mode.id_for_label }}").value;
+    const tcsAmount = tcsMode === "percent" ? taxableTotal * tcsValue / 100 : tcsValue;
+    const discountValue = Number(document.getElementById("{{ form.discount_amount.id_for_label }}").value) || 0;
+    const discountMode = document.getElementById("{{ form.discount_mode.id_for_label }}").value;
+    const discountAmount = discountMode === "percent" ? taxableTotal * discountValue / 100 : discountValue;
+    const additional = Number(document.getElementById("{{ form.additional_charges.id_for_label }}").value) || 0;
+    const deductTcs = document.getElementById("tcs-sign").value === "subtract";
+    const addDiscount = document.getElementById("discount-sign").value === "add";
+    const beforeRound = taxableTotal + taxTotal + (addDiscount ? discountAmount : -discountAmount) + additional + (deductTcs ? -tcsAmount : tcsAmount);
+    const roundEnabled = document.getElementById("{{ form.round_off_enabled.id_for_label }}").checked;
+    const invoiceTotal = roundEnabled ? Math.round(beforeRound) : beforeRound;
+    document.getElementById("items-subtotal").textContent = subtotal.toFixed(2);
+    document.getElementById("items-discount").textContent = discountTotal.toFixed(2);
+    document.getElementById("items-total").textContent = invoiceTotal.toFixed(2);
+    document.getElementById("items-taxable-total").textContent = taxableTotal.toFixed(2);
+    document.getElementById("items-total-taxable").textContent = (taxableTotal + additional).toFixed(2);
+    document.getElementById("items-cgst-total").textContent = cgstTotal.toFixed(2);
+    document.getElementById("items-sgst-total").textContent = sgstTotal.toFixed(2);
+    document.getElementById("items-igst-total").textContent = igstTotal.toFixed(2);
+    document.getElementById("items-tax-total").textContent = taxTotal.toFixed(2);
+    document.getElementById("items-tcs-total").textContent = (deductTcs ? -tcsAmount : tcsAmount).toFixed(2);
+    document.getElementById("items-discount-total").textContent = discountAmount.toFixed(2);
+    document.getElementById("items-round-off").textContent = (invoiceTotal - beforeRound).toFixed(2);
+    document.getElementById("items-grand-total").textContent = invoiceTotal.toFixed(2);
+    const sign = document.getElementById("tcs-sign");
+    document.getElementById("{{ form.tcs_is_deduction.id_for_label }}").value = sign.value === "subtract" ? "on" : "";
+    document.getElementById("{{ form.discount_is_addition.id_for_label }}").value = addDiscount ? "on" : "";
+    const whole = Math.floor(Math.abs(invoiceTotal));
+    const paise = Math.round((Math.abs(invoiceTotal) - whole) * 100);
+    document.getElementById("items-total-words").textContent = `${numberWords(whole).toUpperCase()} RUPEES${paise ? ` AND ${numberWords(paise).toUpperCase()} PAISE` : ""} ONLY`;
+  };
+  document.querySelectorAll(".adjustment-value, .adjustment-mode, #tcs-sign, #discount-sign, #{{ form.round_off_enabled.id_for_label }}").forEach((field) => { field.addEventListener("input", updateTotals); field.addEventListener("change", updateTotals); });
+  const bindItemRow = (row) => {
+    row.querySelectorAll("input, select").forEach((field) => {
+      if (field.matches('input[type="number"]')) field.addEventListener("wheel", () => field.blur(), {passive: true});
+      if (field.classList.contains("item-total")) return;
+      field.addEventListener("input", updateTotals);
+      field.addEventListener("change", updateTotals);
+    });
+    row.querySelector(".item-total").addEventListener("input", (event) => {
+      const quantity = Number(row.querySelector(".item-quantity").value) || 0;
+      if (quantity <= 0) return;
+      const amount = Number(event.currentTarget.value);
+      if (!Number.isFinite(amount) || amount < 0) return;
+      const taxRate = Number(row.querySelector(".item-tax-rate").value) || 0;
+      const discountPercent = Math.min(100, Math.max(0, Number(row.querySelector(".item-discount").value) || 0));
+      const rate = discountPercent >= 100 ? 0 : amount / (1 + taxRate / 100) / (quantity * (1 - discountPercent / 100));
+      row.querySelector(".item-rate").value = rate.toFixed(2);
+      updateTotals();
+    });
+    const batchField = row.querySelector('[name="item_batch_number"]');
+    let batchLookupTimer;
+    batchField.addEventListener("input", () => {
+      clearTimeout(batchLookupTimer);
+      if (!batchField.value.trim()) return;
+      batchLookupTimer = setTimeout(() => lookupSampleByBatch(row), 650);
+    });
+    batchField.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        clearTimeout(batchLookupTimer);
+        lookupSampleByBatch(row);
+      }
+    });
+    row.querySelector(".remove-invoice-item").addEventListener("click", () => {
+      const rows = itemBody.querySelectorAll(".invoice-item-row");
+      if (rows.length > 1) row.remove();
+      else {
+        row.querySelectorAll("input, textarea").forEach((field) => { field.value = ""; });
+        row.querySelector(".item-tax-type").value = "";
+      }
+      renumberItems();
+      updateTotals();
+    });
+  };
+  itemBody.querySelectorAll(".invoice-item-row").forEach(bindItemRow);
+  document.getElementById("add-invoice-item").addEventListener("click", () => {
+    const row = itemBody.querySelector(".invoice-item-row").cloneNode(true);
+    row.querySelectorAll("input, textarea").forEach((field) => { field.value = ""; });
+    row.querySelector(".item-quantity").value = "1";
+    row.querySelector('[name="item_uom"]').value = "NOS";
+    row.querySelector(".item-tax-type").value = "";
+    row.querySelector(".item-total").value = "0.00";
+    itemBody.insertBefore(row, totalRow);
+    bindItemRow(row);
+    renumberItems();
+    updateTotals();
+  });
+  const addSampleToItems = (sample, preferredRow = null) => {
+    const row = preferredRow || [...itemBody.querySelectorAll(".invoice-item-row")].find((candidate) =>
+      !candidate.querySelector(".item-booking-id").value &&
+      !candidate.querySelector(".item-description").value.trim() &&
+      !candidate.querySelector('[name="item_batch_number"]').value.trim()
+    ) || itemBody.querySelector(".invoice-item-row").cloneNode(true);
+    const isNewRow = !row.isConnected;
+    row.querySelectorAll("input, textarea").forEach((field) => { field.value = ""; });
+    row.querySelector(".item-tax-type").value = "";
+    row.querySelector(".item-booking-id").value = sample.booking_id;
+    row.querySelector(".item-description").value = sample.description;
+    row.querySelector('[name="item_note"]').value = sample.note;
+    row.querySelector('[name="item_batch_number"]').value = sample.batch_number;
+    row.querySelector(".item-quantity").value = "1";
+    row.querySelector('[name="item_uom"]').value = "NOS";
+    row.querySelector(".item-total").value = "0.00";
+    if (isNewRow) {
+      itemBody.insertBefore(row, totalRow);
+      bindItemRow(row);
+    }
+    renumberItems();
+  };
+  const batchStatus = document.getElementById("batch-sample-status");
+  const lookupUrl = "{% url 'bookings:invoice_batch_lookup' %}";
+  let batchLookupRequest = 0;
+  const lookupSampleByBatch = async (targetRow) => {
+    const batchField = targetRow.querySelector('[name="item_batch_number"]');
+    const batch = batchField.value.trim();
+    const customerId = select && select.value;
+    if (!customerId) {
+      batchStatus.textContent = "Select a customer first.";
+      return;
+    }
+    if (!batch) return;
+    const requestId = ++batchLookupRequest;
+    targetRow.dataset.batchLookupRequest = requestId;
+    batchStatus.textContent = "Looking up passed samples…";
+    try {
+      const query = new URLSearchParams({batch, customer: customerId});
+      const response = await fetch(`${lookupUrl}?${query.toString()}`, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+      const result = await response.json();
+      if (!targetRow.isConnected || Number(targetRow.dataset.batchLookupRequest) !== requestId || batchField.value.trim() !== batch || select.value !== customerId) return;
+      if (!response.ok) throw new Error(result.error || "Could not look up that batch number.");
+      if (!result.items.length) {
+        batchStatus.textContent = `No passed sample found for batch ${batch} and the selected customer.`;
+        return;
+      }
+      const existingBookingIds = new Set([...itemBody.querySelectorAll(".item-booking-id")].map((field) => field.value).filter(Boolean));
+      const newItems = result.items.filter((sample) => !existingBookingIds.has(String(sample.booking_id)));
+      if (!newItems.length) {
+        batchStatus.textContent = `Batch ${batch} is already added to this bill.`;
+        return;
+      }
+      newItems.forEach((sample, index) => addSampleToItems(sample, index === 0 ? targetRow : null));
+      updateTotals();
+      batchStatus.textContent = `${newItems.length} passed sample(s) added for batch ${batch}.`;
+    } catch (error) {
+      if (Number(targetRow.dataset.batchLookupRequest) === requestId) batchStatus.textContent = error.message || "Could not look up that batch number.";
+    }
+  };
+  updateTotals();
+})();
+</script>
+{% endblock %}

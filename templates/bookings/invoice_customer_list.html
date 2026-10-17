@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Sales Invoice Customers | LIMS{% endblock %}
+{% block content %}
+<style>
+  .invoice-customer-detail-modal .modal-dialog { margin: 0 0 0 auto; max-width: 650px; height: 100vh; }
+  .invoice-customer-detail-modal .modal-content { height: 100vh; border-radius: 12px 0 0 12px; }
+  .invoice-customer-detail-modal .modal-body { overflow-y: auto; }
+  .invoice-customer-section { border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 1.25rem; }
+  .invoice-customer-section h6 { font-weight: 600; padding-bottom: .75rem; border-bottom: 1px solid #e5e7eb; margin-bottom: .75rem; }
+  .invoice-customer-detail { display: grid; grid-template-columns: 1fr 1.6fr; gap: .7rem 1rem; font-size: .92rem; }
+  .invoice-customer-detail .label { color: #555; }
+  @media (max-width: 575px) { .invoice-customer-detail { grid-template-columns: 1fr; gap: .15rem; } .invoice-customer-detail .value { margin-bottom: .5rem; } }
+</style>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h3>Sales Invoice Customer Master</h3>
+  <div>
+    <a class="btn btn-outline-secondary" href="{% url 'bookings:sales_invoice_list' %}">Back to Sales Invoices</a>
+    <a class="btn btn-primary" href="{% url 'bookings:invoice_customer_add' %}">Add Customer / Vendor</a>
+  </div>
+</div>
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-5"><input class="form-control" name="q" value="{{ search_query }}" placeholder="Search company, GSTIN, phone or contact"></div>
+  <div class="col-auto"><button class="btn btn-outline-primary">Search</button> <a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_customer_list' %}">Reset</a></div>
+</form>
+<div class="table-responsive">
+  <table class="table table-bordered table-striped align-middle">
+    <thead class="table-light"><tr><th>Company</th><th>Type</th><th>Contact</th><th>Phone</th><th>GSTIN</th><th>City / State</th><th>Enabled</th><th></th></tr></thead>
+    <tbody>
+    {% for customer in customers %}
+      <tr>
+        <td class="fw-semibold">{{ customer.name }}</td><td>{{ customer.get_company_type_display }}</td><td>{{ customer.contact_person|default:'-' }}</td><td>{{ customer.telephone|default:'-' }}</td><td>{{ customer.gstin|default:'-' }}</td>
+        <td>{{ customer.city|default:'-' }}{% if customer.state_name %} / {{ customer.state_name }}{% endif %}</td><td>{% if customer.is_active %}Yes{% else %}No{% endif %}</td>
+        <td class="text-nowrap">
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#invoiceCustomerDetail{{ customer.pk }}">View</button>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'bookings:invoice_customer_edit' customer.pk %}">Edit</a>
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="8" class="text-center">No Sales Invoice customers found.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% for customer in customers %}{% include 'bookings/partials/invoice_customer_detail_modal.html' %}{% endfor %}
+{% if is_paginated %}<div class="small text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} customer(s)</div><nav><ul class="pagination">{% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{% if search_query %}q={{ search_query|urlencode }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}{% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{% if search_query %}q={{ search_query|urlencode }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}</ul></nav>{% endif %}
+{% endblock %}

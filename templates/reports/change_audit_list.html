@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Changes History | LIMS{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header"><h5 class="mb-0">Changes History</h5></div>
+  <div class="card-body">
+    <form method="get" class="row g-2 mb-3">
+      <div class="col-md-5"><input class="form-control" name="booking_id" value="{{ booking_id }}" placeholder="Search by Booking ID"></div>
+      <div class="col-md-3">
+        <select class="form-select" name="area">
+          <option value="booking" {% if area == 'booking' %}selected{% endif %}>Booking changes</option>
+          <option value="coa" {% if area == 'coa' %}selected{% endif %}>COA edit history</option>
+        </select>
+      </div>
+      <div class="col-md-2"><button class="btn btn-outline-primary w-100">Search</button></div>
+      <div class="col-md-2"><a class="btn btn-outline-secondary w-100" href="{% url 'reports:change_audit' %}?area={{ area|urlencode }}">Reset</a></div>
+    </form>
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle">
+        <thead class="table-light"><tr><th>Date / Time</th><th>Booking ID</th>{% if area == 'booking' %}<th>Changed Field</th>{% endif %}<th>Changed By</th>{% if area == 'booking' %}<th>From</th><th>To</th>{% else %}<th>Activity</th>{% endif %}</tr></thead>
+        <tbody>
+          {% for entry in audit_entries %}
+          <tr>
+            <td>{{ entry.changed_at|date:"d/m/Y H:i" }}</td>
+            <td>{% if entry.booking_id %}<a href="{% url 'bookings:detail' entry.booking_id %}">{{ entry.booking_code }}</a>{% else %}{{ entry.booking_code }}{% endif %}</td>
+            {% if area == 'booking' %}<td>{{ entry.field_label }}</td>{% endif %}
+            <td>{% if entry.changed_by %}{{ entry.changed_by.get_full_name|default:entry.changed_by.username }}{% else %}Unknown{% endif %}</td>
+            {% if area == 'booking' %}
+            <td class="text-break"><pre class="mb-0 text-wrap">{{ entry.old_value }}</pre></td>
+            <td class="text-break"><pre class="mb-0 text-wrap">{{ entry.new_value }}</pre></td>
+            {% else %}<td>COA edited</td>{% endif %}
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="text-center text-muted">No recorded changes found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}
+    <nav aria-label="Audit pages"><ul class="pagination">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?booking_id={{ booking_id|urlencode }}&area={{ area|urlencode }}&page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?booking_id={{ booking_id|urlencode }}&area={{ area|urlencode }}&page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

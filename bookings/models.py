@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError, models
@@ -23,6 +24,9 @@ class ActiveMasterModel(models.Model):
 
 class CustomerMaster(ActiveMasterModel):
     address = models.TextField(blank=True)
+    consignee_address = models.TextField(blank=True)
+    gstin = models.CharField(max_length=20, blank=True)
+    state_code = models.CharField(max_length=2, blank=True)
     contact_person = models.CharField(max_length=255, blank=True)
     telephone = models.CharField(max_length=50, blank=True)
     email = models.EmailField(blank=True)
@@ -398,6 +402,35 @@ class Booking(models.Model):
         return self.sample_reg_no or self.tracking_code or f"Booking-{self.pk}"
 
 
+class ChangeAuditEntry(models.Model):
+    """Field-level booking and COA edit history, visible only by permission."""
+
+    class Area(models.TextChoices):
+        BOOKING = "booking", "Booking"
+        COA = "coa", "COA"
+
+    booking = models.ForeignKey(
+        Booking, on_delete=models.SET_NULL, null=True, blank=True, related_name="change_audit_entries"
+    )
+    report_id_value = models.PositiveIntegerField(null=True, blank=True)
+    booking_code = models.CharField(max_length=16, db_index=True)
+    area = models.CharField(max_length=20, choices=Area.choices)
+    field_name = models.CharField(max_length=100)
+    field_label = models.CharField(max_length=150)
+    old_value = models.TextField(blank=True)
+    new_value = models.TextField(blank=True)
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="change_audit_entries",
+    )
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-changed_at", "-pk"]
+        permissions = [("view_booking_change_audit", "Can view booking and COA change audit")]
+        indexes = [models.Index(fields=["booking_code", "-changed_at"], name="bookings_ch_bookin_8cd1_idx")]
+
+
 class BillingRecord(models.Model):
     """Audit entry created when a passed report is confirmed for billing."""
 
@@ -455,3 +488,343 @@ class BillingUndoRecord(models.Model):
         ordering = ["-undone_at", "-pk"]
         verbose_name = "Billing undo record"
         verbose_name_plural = "Billing undo records"
+
+
+class CompanyBillingSettings(models.Model):
+    """Company supplied details used on GST invoices; intentionally blank by default."""
+    legal_name = models.CharField(max_length=255, default="Ayush Research Laboratories Private Limited")
+    invoice_number_prefix = models.CharField(max_length=30, default="ARL/IN")
+    invoice_number_suffix = models.CharField(max_length=20, blank=True, default="")
+    invoice_next_sequence = models.PositiveIntegerField(default=1)
+    address = models.TextField(blank=True)
+    contact_person = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(blank=True)
+    website = models.URLField(blank=True)
+    pan = models.CharField(max_length=20, blank=True)
+    gstin = models.CharField(max_length=20, blank=True)
+    state_code = models.CharField(max_length=2, blank=True)
+    logo = models.ImageField(upload_to="invoice/company/", blank=True, null=True)
+    bank_name = models.CharField(max_length=255, blank=True)
+    bank_account_name = models.CharField(max_length=255, blank=True)
+    bank_account_number = models.CharField(max_length=100, blank=True)
+    bank_ifsc = models.CharField(max_length=20, blank=True)
+    bank_branch = models.CharField(max_length=255, blank=True)
+    upi_id = models.CharField(max_length=255, blank=True)
+    bank_1_account_name = models.CharField(max_length=255, blank=True)
+    bank_1_name = models.CharField(max_length=255, blank=True)
+    bank_1_ifsc = models.CharField(max_length=20, blank=True)
+    bank_1_swift = models.CharField(max_length=20, blank=True)
+    bank_1_micr = models.CharField(max_length=20, blank=True)
+    bank_1_account_number = models.CharField(max_length=100, blank=True)
+    bank_1_branch = models.CharField(max_length=255, blank=True)
+    bank_1_upi_id = models.CharField(max_length=255, blank=True)
+    bank_2_account_name = models.CharField(max_length=255, blank=True)
+    bank_2_name = models.CharField(max_length=255, blank=True)
+    bank_2_ifsc = models.CharField(max_length=20, blank=True)
+    bank_2_swift = models.CharField(max_length=20, blank=True)
+    bank_2_micr = models.CharField(max_length=20, blank=True)
+    bank_2_account_number = models.CharField(max_length=100, blank=True)
+    bank_2_branch = models.CharField(max_length=255, blank=True)
+    bank_2_upi_id = models.CharField(max_length=255, blank=True)
+    bank_3_account_name = models.CharField(max_length=255, blank=True)
+    bank_3_name = models.CharField(max_length=255, blank=True)
+    bank_3_ifsc = models.CharField(max_length=20, blank=True)
+    bank_3_swift = models.CharField(max_length=20, blank=True)
+    bank_3_micr = models.CharField(max_length=20, blank=True)
+    bank_3_account_number = models.CharField(max_length=100, blank=True)
+    bank_3_branch = models.CharField(max_length=255, blank=True)
+    bank_3_upi_id = models.CharField(max_length=255, blank=True)
+    bank_4_account_name = models.CharField(max_length=255, blank=True)
+    bank_4_name = models.CharField(max_length=255, blank=True)
+    bank_4_ifsc = models.CharField(max_length=20, blank=True)
+    bank_4_swift = models.CharField(max_length=20, blank=True)
+    bank_4_micr = models.CharField(max_length=20, blank=True)
+    bank_4_account_number = models.CharField(max_length=100, blank=True)
+    bank_4_branch = models.CharField(max_length=255, blank=True)
+    bank_4_upi_id = models.CharField(max_length=255, blank=True)
+    bank_5_account_name = models.CharField(max_length=255, blank=True)
+    bank_5_name = models.CharField(max_length=255, blank=True)
+    bank_5_ifsc = models.CharField(max_length=20, blank=True)
+    bank_5_swift = models.CharField(max_length=20, blank=True)
+    bank_5_micr = models.CharField(max_length=20, blank=True)
+    bank_5_account_number = models.CharField(max_length=100, blank=True)
+    bank_5_branch = models.CharField(max_length=255, blank=True)
+    bank_5_upi_id = models.CharField(max_length=255, blank=True)
+    bank_6_account_name = models.CharField(max_length=255, blank=True)
+    bank_6_name = models.CharField(max_length=255, blank=True)
+    bank_6_ifsc = models.CharField(max_length=20, blank=True)
+    bank_6_swift = models.CharField(max_length=20, blank=True)
+    bank_6_micr = models.CharField(max_length=20, blank=True)
+    bank_6_account_number = models.CharField(max_length=100, blank=True)
+    bank_6_branch = models.CharField(max_length=255, blank=True)
+    bank_6_upi_id = models.CharField(max_length=255, blank=True)
+    print_upi_qr = models.BooleanField(default=True)
+    upi_qr_include_amount = models.BooleanField(default=True)
+    certification = models.TextField(blank=True)
+    terms = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        permissions = [("manage_company_billing_settings", "Can manage invoice company settings")]
+
+    @classmethod
+    def current(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+
+class InvoiceHeaderMaster(models.Model):
+    """Standalone rich-text header used only by Sales Invoice documents."""
+    content = models.TextField(blank=True, verbose_name="Custom Company Header")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+
+class InvoiceMiddleMaster(models.Model):
+    """Editable rich-text body section for Sales Invoice documents."""
+    content = models.TextField(blank=True, verbose_name="Middle Invoice Template")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+
+class InvoiceFooterMaster(models.Model):
+    """Footer display defaults and optional rich text for Sales Invoice documents."""
+    show_bank_details = models.BooleanField(default=True)
+    show_payment_qr = models.BooleanField(default=True)
+    show_terms = models.BooleanField(default=True)
+    content = models.TextField(blank=True, verbose_name="Additional Invoice Footer Content")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+
+class InvoicePrintTemplateMaster(models.Model):
+    """Separate repeating page header and invoice body templates."""
+    header_content = models.TextField(blank=True)
+    content = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.get_or_create(pk=1)[0]
+
+
+class InvoiceCustomerMaster(models.Model):
+    class CompanyType(models.TextChoices):
+        CUSTOMER = "customer", "Customer"
+        VENDOR = "vendor", "Vendor"
+        BOTH = "both", "Customer / Vendor"
+
+    class RegistrationType(models.TextChoices):
+        UNREGISTERED = "unregistered", "Unregistered"
+        REGULAR = "regular", "Regular"
+        COMPOSITION = "composition", "Composition"
+
+    class BalanceType(models.TextChoices):
+        DEBIT = "debit", "Dr"
+        CREDIT = "credit", "Cr"
+
+    name = models.CharField(max_length=255)
+    company_type = models.CharField(max_length=12, choices=CompanyType.choices, default=CompanyType.CUSTOMER)
+    registration_type = models.CharField(max_length=20, choices=RegistrationType.choices, default=RegistrationType.UNREGISTERED, blank=True)
+    gstin = models.CharField(max_length=20, blank=True)
+    pan = models.CharField(max_length=20, blank=True)
+    contact_person = models.CharField(max_length=255, blank=True)
+    telephone = models.CharField(max_length=50, blank=True)
+    email = models.EmailField(blank=True)
+    address = models.TextField(blank=True)
+    consignee_address = models.TextField(blank=True)
+    landmark = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=120, blank=True)
+    country = models.CharField(max_length=100, blank=True, default="India")
+    state_name = models.CharField(max_length=120, blank=True)
+    state_code = models.CharField(max_length=2, blank=True)
+    pincode = models.CharField(max_length=20, blank=True)
+    distance_from_lab_km = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    customer_group = models.CharField(max_length=120, blank=True)
+    opening_balance = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    balance_type = models.CharField(max_length=6, choices=BalanceType.choices, default=BalanceType.DEBIT)
+    license_no = models.CharField(max_length=120, blank=True)
+    custom_field_1 = models.CharField(max_length=255, blank=True)
+    custom_field_2 = models.CharField(max_length=255, blank=True)
+    rate_no = models.CharField(max_length=100, blank=True)
+    website = models.URLField(blank=True)
+    credit_limit = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    due_days = models.PositiveIntegerField(null=True, blank=True)
+    note = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "pk"]
+        permissions = [("manage_invoice_customers", "Can manage Sales Invoice customers")]
+
+    @property
+    def invoice_billing_address(self):
+        return ", ".join(value for value in (self.address, self.landmark, self.city, self.state_name, self.pincode, self.country) if value)
+
+    def __str__(self):
+        return self.name
+
+
+class SalesInvoice(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        FINALIZED = "finalized", "Finalized"
+
+    class PaymentType(models.TextChoices):
+        CREDIT = "credit", "Credit"
+        CASH = "cash", "Cash"
+        CHEQUE = "cheque", "Cheque"
+        ONLINE = "online", "Online"
+
+    class AdjustmentMode(models.TextChoices):
+        AMOUNT = "amount", "₹"
+        PERCENT = "percent", "%"
+
+    invoice_number = models.CharField(max_length=80, blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT)
+    invoice_date = models.DateField(default=timezone.localdate)
+    invoice_type = models.CharField(max_length=80, blank=True, default="Regular")
+    claim_number = models.CharField(max_length=100, blank=True)
+    po_number = models.CharField(max_length=100, blank=True)
+    po_date = models.DateField(null=True, blank=True)
+    lr_number = models.CharField(max_length=100, blank=True)
+    eway_number = models.CharField(max_length=100, blank=True)
+    challan_number = models.CharField(max_length=100, blank=True)
+    challan_date = models.DateField(null=True, blank=True)
+    delivery_mode = models.CharField(max_length=120, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    payment_type = models.CharField(max_length=12, choices=PaymentType.choices, default=PaymentType.CREDIT)
+    terms_title = models.CharField(max_length=255, blank=True, default="Terms and Conditions")
+    terms_detail = models.TextField(blank=True)
+    document_remarks = models.TextField(blank=True)
+    discount_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    discount_mode = models.CharField(max_length=8, choices=AdjustmentMode.choices, default=AdjustmentMode.AMOUNT)
+    discount_is_addition = models.BooleanField(default=False)
+    tcs_rate = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    tcs_mode = models.CharField(max_length=8, choices=AdjustmentMode.choices, default=AdjustmentMode.PERCENT)
+    tcs_is_deduction = models.BooleanField(default=False)
+    additional_charges = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    round_off_enabled = models.BooleanField(default=False)
+    buyer = models.ForeignKey(CustomerMaster, on_delete=models.PROTECT, related_name="sales_invoices", null=True, blank=True)
+    invoice_customer = models.ForeignKey(InvoiceCustomerMaster, on_delete=models.PROTECT, related_name="sales_invoices", null=True, blank=True)
+    buyer_snapshot = models.JSONField(default=dict, blank=True)
+    company_snapshot = models.JSONField(default=dict, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    finalized_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="finalized_sales_invoices")
+    finalized_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        permissions = [("finalize_salesinvoice", "Can finalize sales invoices"), ("manage_sales_invoices", "Can create and edit sales invoices")]
+
+    @property
+    def taxable_total(self):
+        return sum((line.taxable_value for line in self.lines.all()), Decimal("0.00"))
+
+    @property
+    def tax_total(self):
+        return sum((line.cgst_amount + line.sgst_amount + line.igst_amount for line in self.lines.all()), Decimal("0.00"))
+
+    @property
+    def items_total(self):
+        return self.taxable_total + self.tax_total
+
+    @property
+    def tcs_amount(self):
+        from decimal import ROUND_HALF_UP
+        amount = self.tcs_rate
+        if self.tcs_mode == self.AdjustmentMode.PERCENT:
+            amount = self.taxable_total * self.tcs_rate / Decimal("100")
+        return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def discount_total(self):
+        from decimal import ROUND_HALF_UP
+        amount = self.discount_amount
+        if self.discount_mode == self.AdjustmentMode.PERCENT:
+            amount = self.taxable_total * self.discount_amount / Decimal("100")
+        return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def total_before_round_off(self):
+        tcs = -self.tcs_amount if self.tcs_is_deduction else self.tcs_amount
+        discount = self.discount_total if self.discount_is_addition else -self.discount_total
+        return self.taxable_total + self.tax_total + discount + self.additional_charges + tcs
+
+    @property
+    def round_off_amount(self):
+        if not self.round_off_enabled:
+            return Decimal("0.00")
+        return self.grand_total - self.total_before_round_off
+
+    @property
+    def cgst_total(self):
+        return sum((line.cgst_amount for line in self.lines.all()), Decimal("0.00"))
+
+    @property
+    def sgst_total(self):
+        return sum((line.sgst_amount for line in self.lines.all()), Decimal("0.00"))
+
+    @property
+    def igst_total(self):
+        return sum((line.igst_amount for line in self.lines.all()), Decimal("0.00"))
+
+    @property
+    def grand_total(self):
+        total = self.total_before_round_off
+        if self.round_off_enabled:
+            from decimal import ROUND_HALF_UP
+            return total.quantize(Decimal("1"), rounding=ROUND_HALF_UP).quantize(Decimal("0.01"))
+        return total
+
+
+class SalesInvoiceLine(models.Model):
+    invoice = models.ForeignKey(SalesInvoice, on_delete=models.CASCADE, related_name="lines")
+    booking = models.ForeignKey(Booking, on_delete=models.PROTECT, null=True, blank=True, related_name="invoice_lines")
+    description = models.CharField(max_length=500, blank=True)
+    item_note = models.TextField(blank=True)
+    sample_id = models.CharField(max_length=100, blank=True)
+    hsn_sac = models.CharField(max_length=20, blank=True)
+    quantity = models.DecimalField(max_digits=12, decimal_places=3, blank=True, null=True, default=None)
+    uom = models.CharField(max_length=40, blank=True)
+    batch_number = models.CharField(max_length=100, blank=True)
+    rate = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True, default=None)
+    discount_amount = models.DecimalField(max_digits=14, decimal_places=2, blank=True, null=True, default=None)
+    cgst_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, default=None)
+    sgst_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, default=None)
+    igst_rate = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, default=None)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "pk"]
+
+    @property
+    def taxable_value(self):
+        from decimal import Decimal, ROUND_HALF_UP
+        gross = ((self.quantity or Decimal("0")) * (self.rate or Decimal("0"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return max(Decimal("0.00"), gross - (self.discount_amount or Decimal("0")))
+
+    def _tax(self, rate):
+        from decimal import Decimal, ROUND_HALF_UP
+        return (self.taxable_value * (rate or Decimal("0")) / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    @property
+    def cgst_amount(self): return self._tax(self.cgst_rate)
+    @property
+    def sgst_amount(self): return self._tax(self.sgst_rate)
+    @property
+    def igst_amount(self): return self._tax(self.igst_rate)
+    @property
+    def total(self): return self.taxable_value + self.cgst_amount + self.sgst_amount + self.igst_amount

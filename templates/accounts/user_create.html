@@ -104,6 +104,20 @@
       </div>
       {% endif %}
 
+      {% if not form.can_view_booking_change_audit.field.disabled %}
+      <div class="col-md-3 form-check mt-4 ms-3">
+        {{ form.can_view_booking_change_audit }}
+        <label class="form-check-label" for="id_can_view_booking_change_audit">Booking Change Audit Access</label>
+      </div>
+      {% endif %}
+
+      {% if not form.can_manage_invoice_customers.field.disabled %}
+      <div class="col-md-3 form-check mt-4 ms-3">
+        {{ form.can_manage_invoice_customers }}
+        <label class="form-check-label" for="id_can_manage_invoice_customers">Sales Invoice Customer Master Access</label>
+      </div>
+      {% endif %}
+
       {% if not form.can_view_user_activity.field.disabled %}
       <div class="col-md-3 form-check mt-4 ms-3">
         {{ form.can_view_user_activity }}

@@ -37,6 +37,7 @@ from .models import (
     Booking,
     BillingRecord,
     BillingUndoRecord,
+    ChangeAuditEntry,
     CustomerMaster,
     ManufacturerMaster,
     ProtocolMaster,
@@ -46,6 +47,7 @@ from .models import (
     UOMMaster,
 )
 from .permissions import RoleRequiredMixin
+from .change_audit import booking_snapshot, record_changes
 from .dashboard_cache import dashboard_metrics
 
 
@@ -508,6 +510,9 @@ def _party_pending_bookings(customer_id="", statuses=None, booking_status="", da
     bookings = list(queryset)
     for booking in bookings:
         report = getattr(booking, "report", None)
+        booking.completion_date = (
+            (report.analysis_end_date if report else None) or booking.analysis_end_date
+        )
         if booking.status == Booking.Status.PENDING:
             booking.party_status = "Pending"
         elif report and report.final_outcome == Report.FinalOutcome.PASS:
@@ -550,7 +555,7 @@ class PartyPendingExcelView(LoginRequiredMixin, View):
         response["Content-Disposition"] = f'attachment; filename="{filename}.csv"'
         response.write("\ufeff")
         writer = csv.writer(response)
-        writer.writerow(["Sr. No.", "Sample Name", "Batch No.", "Booking No.", "Letter Date", "Booking Date", "Booking Status", "Processing Status", "Party Name"])
+        writer.writerow(["Sr. No.", "Sample Name", "Batch No.", "Booking No.", "Letter Date", "Booking Date", "Completion Date", "Booking Status", "Processing Status", "Party Name"])
         for index, booking in enumerate(_party_pending_bookings(customer_id, statuses, booking_status, date_from, date_to), start=1):
             writer.writerow(
                 [
@@ -560,6 +565,7 @@ class PartyPendingExcelView(LoginRequiredMixin, View):
                     booking.tracking_code,
                     booking.letter_date.strftime("%d/%m/%Y") if booking.letter_date else "",
                     booking.booking_date.strftime("%d/%m/%Y") if booking.booking_date else "",
+                    booking.completion_date.strftime("%d/%m/%Y") if booking.completion_date else "",
                     booking.get_status_display(),
                     booking.party_status,
                     booking.customer.name if booking.customer_id else "",
@@ -677,6 +683,7 @@ class BookingUpdateView(RoleRequiredMixin, PermissionRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
+        before = booking_snapshot(Booking.objects.get(pk=self.object.pk))
         try:
             response = super().form_valid(form)
         except DatabaseError:
@@ -685,6 +692,10 @@ class BookingUpdateView(RoleRequiredMixin, PermissionRequiredMixin, UpdateView):
                 "Database schema is not up to date. Please run migrations and try again.",
             )
             return redirect("bookings:list")
+        record_changes(
+            booking=self.object, area=ChangeAuditEntry.Area.BOOKING, before=before,
+            after=booking_snapshot(self.object), user=self.request.user,
+        )
         return response
 
     def get_success_url(self):
@@ -702,6 +713,7 @@ class BookingListView(LoginRequiredMixin, ListView):
             Booking.objects.select_related("customer", "sample_name", "created_by", "updated_by", "approved_by")
             .prefetch_related("test_to_be_performed")
             .annotate(
+                has_audit_changes=Exists(ChangeAuditEntry.objects.filter(booking_id=OuterRef("pk"))),
                 is_reported_for_list=Exists(
                     Report.objects.filter(
                         booking_id=OuterRef("pk"),
@@ -783,6 +795,10 @@ class BookingDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["report"] = getattr(self.object, "report", None)
+        context["has_change_audit"] = (
+            self.request.user.has_perm("bookings.view_booking_change_audit")
+            and self.object.change_audit_entries.exists()
+        )
         return context
 
 

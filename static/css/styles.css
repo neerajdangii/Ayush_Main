@@ -1348,3 +1348,8 @@ th, td {
   .booking-view-sidebar { position: static; }
   .booking-info-row { grid-template-columns: 1fr; gap: 4px; }
 }
+.change-audit-highlight {
+  background: #ffe2e2;
+  box-shadow: 0 0 0 2px #ffe2e2;
+  border-radius: 3px;
+}

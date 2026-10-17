@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Invoice Template Master | LIMS{% endblock %}
+{% block extra_head %}
+<script>
+  const arlInvoiceStaticPrefix = "{% get_static_prefix %}";
+  window.tinyMCEPreInit = {base: `${arlInvoiceStaticPrefix}js/tinymce`, baseURL: `${arlInvoiceStaticPrefix}js/tinymce`, suffix: ".min"};
+  window.arlTinyMceConfig = {baseUrl: `${arlInvoiceStaticPrefix}js/tinymce`, baseURL: `${arlInvoiceStaticPrefix}js/tinymce`, skinUrl: `${arlInvoiceStaticPrefix}js/tinymce/skins/ui/oxide`, contentCss: "{% static 'js/tinymce/skins/content/default/content.min.css' %}"};
+</script>
+<script src="{% static 'js/tinymce_storage_guard.js' %}"></script>
+<script src="{% static 'js/tinymce/tinymce.min.js' %}"></script>
+<style>
+  .invoice-template-editor textarea { min-height:650px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h3 class="mb-1">Invoice Template Master</h3><p class="text-muted mb-0">Edit the repeating page header separately from the invoice body. The header prints at the top of every page.</p></div><a class="btn btn-outline-secondary" href="{% url 'bookings:sales_invoice_list' %}">Back to Invoices</a></div>
+<div class="row g-3">
+  <div class="col-12">
+    <form method="post" id="invoice-template-form">{% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+      <section class="card card-body invoice-template-editor mb-3">
+        <h5>Repeating Page Header</h5>
+        <p class="text-muted small">Put only the company header here. It repeats at the same top position on every printed page.</p>
+        <label class="form-label fw-semibold" for="{{ form.header_content.id_for_label }}">Header HTML</label>
+        {{ form.header_content }}
+        {% if form.header_content.errors %}<div class="text-danger small mt-2">{{ form.header_content.errors }}</div>{% endif %}
+      </section>
+      <section class="card card-body invoice-template-editor mb-3">
+        <h5>Invoice Body</h5>
+        <p class="text-muted small">Party details, products, totals, bank details, terms, and signatures belong here. This content flows across pages below the repeating header.</p>
+        <label class="form-label fw-semibold" for="{{ form.content.id_for_label }}">Invoice body HTML</label>
+        {{ form.content }}
+        {% if form.content.errors %}<div class="text-danger small mt-2">{{ form.content.errors }}</div>{% endif %}
+      </section>
+      <div class="form-text mb-2">Save the template, then open View / Print from an invoice row to preview the page layout.</div>
+      <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit">Save Complete Template</button><a class="btn btn-outline-secondary" href="{% url 'bookings:sales_invoice_list' %}">Cancel</a></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(() => {
+  let attempts = 0;
+  const init = () => {
+    const textareas = [...document.querySelectorAll('textarea[data-editor="tinymce"]')];
+    if (!textareas.length || !window.tinymce) { if (attempts++ < 30) setTimeout(init, 200); return; }
+    textareas.forEach((textarea) => {
+      if (window.tinymce.get(textarea.id)) return;
+      window.tinymce.init({
+        target: textarea,
+        base_url: `${arlInvoiceStaticPrefix}js/tinymce`, suffix: '.min',
+        skin_url: `${arlInvoiceStaticPrefix}js/tinymce/skins/ui/oxide`,
+        content_css: "{% static 'js/tinymce/skins/content/default/content.min.css' %}",
+        license_key: 'gpl',
+        height: textarea.name === 'header_content' ? 360 : 760,
+        readonly: false, menubar: 'file edit view insert format table tools', branding: false,
+        plugins: 'table code lists preview',
+        toolbar: 'undo redo | blocks fontsize | bold italic underline | alignleft aligncenter alignright | outdent indent | bullist numlist | table | code preview',
+        content_style: 'body{font-family:Arial,sans-serif;font-size:10px;padding:10px} table{border-collapse:collapse;width:100%} td,th{border:1px solid #1570ef;padding:4px}',
+        table_default_attributes: {border:'1', style:'border-collapse:collapse;width:100%;'},
+        setup: (editor) => { editor.on('change input undo redo', () => editor.save()); }
+      });
+    });
+  };
+  document.addEventListener('DOMContentLoaded', init);
+  document.getElementById('invoice-template-form')?.addEventListener('submit', () => window.tinymce?.triggerSave());
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Bank Details | LIMS{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div><h3 class="mb-1">Bank Details</h3><p class="mb-0 text-muted">Add company accounts here, then choose the account for each invoice.</p></div>
+</div>
+<form method="post" enctype="multipart/form-data" class="card card-body invoice-settings-form">{% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  <section class="mb-4" id="bill-number-settings">
+    <h5 class="border-bottom pb-2">Bill Number Defaults</h5>
+    <p class="text-muted">These defaults are used for new bills. Changing them does not change invoice numbers already saved.</p>
+    <div class="row g-3">
+      {% for field in numbering_fields %}<div class="col-md-4"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}{% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}</div>{% endfor %}
+    </div>
+  </section>
+  <section class="mb-4">
+    <h5 class="border-bottom pb-2">Company Details</h5>
+    <div class="row g-3">
+      {% for field in company_fields %}
+        <div class="col-md-6">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+          {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+          {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% if default_terms_field %}<section class="mb-4" id="default-invoice-terms">
+    <h5 class="border-bottom pb-2">Default Terms and Conditions</h5>
+    <p class="text-muted">These terms are added to new bills and appear in the printed invoice. You can edit the terms on an individual bill before saving.</p>
+    <label class="form-label" for="{{ default_terms_field.id_for_label }}">{{ default_terms_field.label }}</label>{{ default_terms_field }}
+    {% if default_terms_field.help_text %}<div class="form-text">{{ default_terms_field.help_text }}</div>{% endif %}
+    {% if default_terms_field.errors %}<div class="text-danger small">{{ default_terms_field.errors }}</div>{% endif %}
+  </section>{% endif %}
+  <section class="mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom pb-2 mb-3">
+      <div><h5 class="mb-0">Company Bank Accounts</h5><div class="form-text">Add up to six accounts. On each draft, choose which account should appear on that bill.</div></div>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="add-bank-detail">+ Add Bank Detail</button>
+    </div>
+    <div class="row g-3">
+      {% for group in bank_groups %}
+        <div class="col-xl-6 bank-group-wrap" data-bank-index="{{ group.number }}" {% if not group.has_data and not group.has_errors and group.number != 1 %}hidden{% endif %}>
+          <details class="card bank-group" {% if group.has_data or group.has_errors %}open{% endif %}>
+            <summary class="card-header fw-semibold">Bank Detail {{ group.number }}</summary>
+            <div class="card-body"><div class="row g-2">
+              {% for field in group.fields %}
+                <div class="col-md-6">
+                  <label class="form-label small mb-1" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+                  {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+                </div>
+              {% endfor %}
+            </div></div>
+          </details>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="form-text mt-2">The selected account is saved with each invoice, so changing company bank details later does not alter an existing invoice.</div>
+  </section>
+  <div><button class="btn btn-primary">Save Bank Details</button></div>
+</form>
+<style>
+  .invoice-settings-form{max-width:1200px}
+  .invoice-settings-form input:not([type="checkbox"]),.invoice-settings-form select,.invoice-settings-form textarea{max-width:100%}
+  .bank-group summary{cursor:pointer;list-style:none}
+  .bank-group summary::-webkit-details-marker{display:none}
+  .bank-group summary::after{content:"+";float:right}
+  .bank-group[open] summary::after{content:"−"}
+</style>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const addButton = document.getElementById('add-bank-detail');
+    addButton?.addEventListener('click', () => {
+      const next = [...document.querySelectorAll('.bank-group-wrap[hidden]')][0];
+      if (!next) {
+        addButton.disabled = true;
+        addButton.textContent = 'All 6 Bank Details Added';
+        return;
+      }
+      next.hidden = false;
+      next.querySelector('details')?.setAttribute('open', '');
+      next.scrollIntoView({behavior: 'smooth', block: 'center'});
+      if (!document.querySelector('.bank-group-wrap[hidden]')) {
+        addButton.disabled = true;
+        addButton.textContent = 'All 6 Bank Details Added';
+      }
+    });
+  });
+</script>
+{% endblock %}

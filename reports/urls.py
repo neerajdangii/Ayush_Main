@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     COAEditView,
+    ChangeAuditListView,
     COALetterheadUpdateView,
     TestLetterheadUpdateView,
     COAOptionView,
@@ -16,8 +17,10 @@ from .views import (
     ReportTemplateListView,
     ReportTemplateUpdateView,
     ReportCreateOrUpdateView,
+    ReportDataSheetView,
     ReportApiDetailView,
     ReportListView,
+    ReportQRToggleView,
     TDSDocumentTemplateCreateView,
     TDSDocumentTemplateDeleteView,
     TDSDocumentTemplateExtractView,
@@ -28,7 +31,10 @@ from .views import (
 app_name = "reports"
 
 urlpatterns = [
+    path("change-audit/", ChangeAuditListView.as_view(), name="change_audit"),
+    path("data-sheet/", ReportDataSheetView.as_view(), name="data_sheet"),
     path("", ReportListView.as_view(), name="list"),
+    path("<int:pk>/toggle-qr/", ReportQRToggleView.as_view(), name="toggle_qr"),
     path("api/templates/", ReportTemplateApiListView.as_view(), name="template_api_list"),
     path("api/<int:pk>/", ReportApiDetailView.as_view(), name="report_api_detail"),
     path("templates/", ReportTemplateListView.as_view(), name="template_list"),

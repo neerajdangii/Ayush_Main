@@ -1,0 +1,44 @@
+<div class="modal fade invoice-customer-detail-modal" id="invoiceCustomerDetail{{ customer.pk }}" tabindex="-1" aria-labelledby="invoiceCustomerDetailLabel{{ customer.pk }}" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="invoiceCustomerDetailLabel{{ customer.pk }}">Company Details</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+      <div class="modal-body">
+        <section class="invoice-customer-section"><h6>▤ &nbsp; Customer / Vendor Detail</h6><div class="invoice-customer-detail">
+          <span class="label">Company Type</span><span class="value">{{ customer.get_company_type_display }}</span>
+          <span class="label">GSTIN</span><span class="value">{{ customer.gstin|default:'-' }}</span>
+          <span class="label">Company Name</span><span class="value">{{ customer.name }}</span>
+          <span class="label">Contact Person</span><span class="value">{{ customer.contact_person|default:'-' }}</span>
+          <span class="label">Contact No</span><span class="value">{{ customer.telephone|default:'-' }}</span>
+          <span class="label">Email</span><span class="value">{{ customer.email|default:'-' }}</span>
+          <span class="label">Registration Type</span><span class="value">{{ customer.get_registration_type_display|default:'-' }}</span>
+          <span class="label">PAN</span><span class="value">{{ customer.pan|default:'-' }}</span>
+        </div></section>
+        <section class="invoice-customer-section"><h6>▤ &nbsp; Billing Address</h6><div class="invoice-customer-detail">
+          <span class="label">Address</span><span class="value">{{ customer.address|default:'-'|linebreaksbr }}</span>
+          <span class="label">Landmark</span><span class="value">{{ customer.landmark|default:'-' }}</span>
+          <span class="label">Country</span><span class="value">{{ customer.country|default:'-' }}</span>
+          <span class="label">State</span><span class="value">{{ customer.state_name|default:'-' }}</span>
+          <span class="label">State Code</span><span class="value">{{ customer.state_code|default:'-' }}</span>
+          <span class="label">City</span><span class="value">{{ customer.city|default:'-' }}</span>
+          <span class="label">Pincode</span><span class="value">{{ customer.pincode|default:'-' }}</span>
+          <span class="label">Distance from Lab</span><span class="value">{% if customer.distance_from_lab_km != None %}{{ customer.distance_from_lab_km }} km{% else %}-{% endif %}</span>
+        </div></section>
+        <section class="invoice-customer-section"><h6>▤ &nbsp; Shipping Address</h6><div class="invoice-customer-detail"><span class="label">Address(es)</span><span class="value">{{ customer.consignee_address|default:'-'|linebreaksbr }}</span></div></section>
+        <section class="invoice-customer-section"><h6>▤ &nbsp; Account and Other Details</h6><div class="invoice-customer-detail">
+          <span class="label">Customer / Vendor Group</span><span class="value">{{ customer.customer_group|default:'-' }}</span>
+          <span class="label">Opening Balance</span><span class="value">{{ customer.opening_balance }} {{ customer.get_balance_type_display }}</span>
+          <span class="label">License No.</span><span class="value">{{ customer.license_no|default:'-' }}</span>
+          <span class="label">Custom Field 1</span><span class="value">{{ customer.custom_field_1|default:'-' }}</span>
+          <span class="label">Custom Field 2</span><span class="value">{{ customer.custom_field_2|default:'-' }}</span>
+          <span class="label">Rate No.</span><span class="value">{{ customer.rate_no|default:'-' }}</span>
+          <span class="label">Website</span><span class="value">{{ customer.website|default:'-' }}</span>
+          <span class="label">Credit Limit</span><span class="value">{{ customer.credit_limit|default:'-' }}</span>
+          <span class="label">Due Days</span><span class="value">{{ customer.due_days|default:'-' }}</span>
+          <span class="label">Note</span><span class="value">{{ customer.note|default:'-'|linebreaksbr }}</span>
+          <span class="label">Enabled</span><span class="value">{% if customer.is_active %}Yes{% else %}No{% endif %}</span>
+        </div></section>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">× &nbsp; Close</button></div>
+    </div>
+  </div>
+</div>

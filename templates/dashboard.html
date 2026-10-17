@@ -59,8 +59,9 @@
   </div>
 </div>
 
-{% if perms.bookings.view_data_sheet %}
+{% if perms.bookings.view_data_sheet or perms.bookings.view_booking_change_audit %}
 <div class="row mb-3">
+  {% if perms.bookings.view_data_sheet %}
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -69,16 +70,27 @@
       </div>
     </div>
   </div>
+  {% endif %}
+  {% if perms.bookings.view_booking_change_audit %}
+  <div class="col-md-3">
+    <div class="card shadow-sm">
+      <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h6 class="mb-0">Changes History</h6>
+        <a class="btn btn-primary btn-sm" href="{% url 'reports:change_audit' %}">Open History</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endif %}
 
-{% if perms.bookings.view_billingrecord %}
+{% if perms.bookings.view_salesinvoice %}
 <div class="row mb-3">
   <div class="col-md-3">
     <div class="card shadow-sm">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h6 class="mb-0">Invoice Sheet</h6>
-        <a class="btn btn-primary btn-sm" href="{% url 'bookings:billing_pending' %}">Open Invoice Sheet</a>
+        <h6 class="mb-0">Sales Invoice</h6>
+        <a class="btn btn-primary btn-sm" href="{% url 'bookings:sales_invoice_list' %}">Open Sales Invoice</a>
       </div>
     </div>
   </div>

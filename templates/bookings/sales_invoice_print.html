@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ invoice.invoice_number|default:"Draft Invoice" }}</title>
+<style>
+  html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#5e6268;color:#111}
+  .print-toolbar{position:sticky;top:0;z-index:5;display:flex;gap:.6rem;align-items:center;padding:.65rem 1rem;background:#243b78;color:#fff}
+  .print-toolbar a,.print-toolbar button{border:1px solid #cbd5e1;border-radius:.45rem;padding:.5rem .8rem;background:#fff;color:#172554;text-decoration:none;font:inherit;cursor:pointer}
+  .invoice-paper{width:210mm;min-height:297mm;margin:14px auto;padding:0;background:#fff;box-shadow:0 2px 12px #0005;box-sizing:border-box}
+  .invoice-print-layout{width:100%;border-collapse:collapse;table-layout:fixed}
+  .invoice-print-layout>thead{display:table-header-group}
+  .invoice-print-layout>thead>tr{break-inside:avoid;page-break-inside:avoid}
+  .invoice-print-layout>tbody>tr>td,.invoice-print-layout>thead>tr>td{padding:0;border:0;vertical-align:top}
+  #invoice-screen-pages{display:none}
+  #invoice-screen-pages,#invoice-screen-pages *{color:#000!important}
+  #invoice-screen-pages table.invoice-items-preview{height:auto!important;min-height:0!important;table-layout:fixed}
+  #invoice-screen-pages table.invoice-items-preview tr{height:auto!important;min-height:0!important}
+  #invoice-screen-pages table.invoice-items-preview th,#invoice-screen-pages table.invoice-items-preview td{height:auto!important;min-height:0!important;padding-top:2px!important;padding-bottom:2px!important;line-height:1.15!important}
+  .invoice-screen-page{position:relative;display:flex;flex-direction:column;width:210mm;height:297mm;box-sizing:border-box;margin:14px auto;padding:9mm 9mm 13mm;overflow:hidden;background:#fff;box-shadow:0 2px 12px #0005}
+  .invoice-screen-page-header{flex:0 0 auto;min-height:35mm;height:auto;overflow:visible;margin-bottom:3mm}
+  .invoice-screen-page-header table{width:100%;max-width:100%}
+  .invoice-screen-page-header img{display:block;max-width:100%!important;max-height:22mm!important;height:auto!important;object-fit:contain}
+  .invoice-screen-page-body{display:flex;flex:1 1 auto;flex-direction:column;min-height:0;overflow:hidden}
+  .invoice-screen-page-body>table,.invoice-screen-page-body>div{flex:0 0 auto}
+  .invoice-screen-footer{flex:0 0 auto;margin-top:auto!important}
+  .invoice-screen-page-number{position:absolute;right:9mm;bottom:4mm;font:8pt Arial,sans-serif;color:#111}
+  .invoice-preview-ready #invoice-screen-pages{display:block}
+  .invoice-preview-ready #invoice-print-source{position:absolute;left:-10000px;top:0;visibility:hidden}
+  @media print{
+    @page{size:A4;margin:0}
+    html,body{width:auto;min-height:0;background:#fff}
+    .print-toolbar{display:none!important}
+    #invoice-print-source{display:none!important}
+    #invoice-screen-pages{display:block!important;visibility:visible!important}
+    .invoice-screen-page{width:210mm;height:297mm;margin:0 auto;box-shadow:none;break-after:page;page-break-after:always;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .invoice-screen-page:last-child{break-after:auto;page-break-after:auto}
+  }
+</style></head><body>
+<nav class="print-toolbar"><a href="{% url 'bookings:sales_invoice_list' %}">Back to Sales Invoices</a>{% if not template_error %}<button type="button" onclick="window.print()">Print / Save PDF</button>{% endif %}<span>{{ invoice.invoice_number|default:"Draft" }}</span></nav>
+{% if not template_error %}<div id="invoice-screen-pages" aria-label="Invoice A4 page preview"></div>{% endif %}
+<main id="invoice-print-source" class="invoice-paper">{% if template_error %}<div style="margin:16px;padding:16px;border:1px solid #c00;color:#900"><strong>The saved invoice template has an error:</strong> {{ template_error }}</div>{% else %}<table class="invoice-print-layout"><thead><tr><td>{{ rendered_header }}</td></tr></thead><tbody><tr><td>{{ rendered_invoice }}</td></tr></tbody></table>{% endif %}</main>
+{% if not template_error %}<script>
+(() => {
+  const source = document.getElementById('invoice-print-source');
+  const preview = document.getElementById('invoice-screen-pages');
+  const headerCell = source?.querySelector('.invoice-print-layout > thead > tr > td');
+  const bodyCell = source?.querySelector('.invoice-print-layout > tbody > tr > td');
+  if (!preview || !headerCell || !bodyCell) return;
+  preview.style.display = 'block';
+  preview.style.visibility = 'hidden';
+
+  const newPage = () => {
+    const page = document.createElement('section');
+    page.className = 'invoice-screen-page';
+    const header = document.createElement('div');
+    header.className = 'invoice-screen-page-header';
+    header.innerHTML = headerCell.innerHTML;
+    const body = document.createElement('div');
+    body.className = 'invoice-screen-page-body';
+    const number = document.createElement('div');
+    number.className = 'invoice-screen-page-number';
+    page.append(header, body, number);
+    preview.appendChild(page);
+    return {page, body};
+  };
+  const pageIsEmpty = (body) => !body.children.length && !body.textContent.trim();
+  const fits = (body) => body.scrollHeight <= body.clientHeight + 1;
+  const markItemsTable = (table) => {
+    const heading = table.tHead?.textContent || '';
+    if (/name\s+of\s+product\s*\/\s*service|product\s*\/\s*service/i.test(heading)) {
+      table.classList.add('invoice-items-preview');
+    }
+  };
+  let current = newPage();
+
+  const addTable = (table) => {
+    let clone = table.cloneNode(true);
+    markItemsTable(clone);
+    current.body.appendChild(clone);
+    if (fits(current.body)) return;
+    clone.remove();
+
+    const sections = [...table.children].filter((child) => child.tagName === 'TBODY');
+    const rows = sections.flatMap((section, sectionIndex) => [...section.children]
+      .filter((row) => row.tagName === 'TR').map((row) => ({row, sectionIndex})));
+    if (!rows.length) {
+      current.body.appendChild(table.cloneNode(true));
+      return;
+    }
+    const makeChunk = () => {
+      const chunk = table.cloneNode(true);
+      markItemsTable(chunk);
+      [...chunk.children].filter((child) => child.tagName === 'TBODY').forEach((section) => section.replaceChildren());
+      [...chunk.children].filter((child) => child.tagName === 'TFOOT').forEach((section) => section.remove());
+      return chunk;
+    };
+    let chunk = null;
+    let chunkRows = 0;
+    rows.forEach(({row, sectionIndex}) => {
+      if (!chunk) {
+        chunk = makeChunk();
+        current.body.appendChild(chunk);
+        chunkRows = 0;
+      }
+      let destination = [...chunk.children].filter((child) => child.tagName === 'TBODY')[sectionIndex];
+      destination.appendChild(row.cloneNode(true));
+      chunkRows += 1;
+      if (!fits(current.body)) {
+        destination.lastElementChild.remove();
+        chunkRows -= 1;
+        if (chunkRows === 0) {
+          chunk.remove();
+          if (!pageIsEmpty(current.body)) current = newPage();
+          chunk = makeChunk();
+          current.body.appendChild(chunk);
+          destination = [...chunk.children].filter((child) => child.tagName === 'TBODY')[sectionIndex];
+          destination.appendChild(row.cloneNode(true));
+          chunkRows = 1;
+          return;
+        }
+        current = newPage();
+        chunk = makeChunk();
+        current.body.appendChild(chunk);
+        destination = [...chunk.children].filter((child) => child.tagName === 'TBODY')[sectionIndex];
+        destination.appendChild(row.cloneNode(true));
+        chunkRows = 1;
+      }
+    });
+    const footers = [...table.children].filter((child) => child.tagName === 'TFOOT');
+    if (footers.length && chunk) footers.forEach((footer) => chunk.appendChild(footer.cloneNode(true)));
+  };
+
+  [...bodyCell.children].forEach((element) => {
+    if (element.tagName === 'STYLE' || element.tagName === 'SCRIPT') return;
+    const isFooter = element.classList.contains('invoice-closing')
+      || element.classList.contains('arl-section-footer')
+      || element.dataset.invoiceSection === 'footer'
+      || element.dataset.sectionLabel?.toLowerCase() === 'invoice footer';
+    if (isFooter) {
+      const footer = element.cloneNode(true);
+      footer.classList.add('invoice-screen-footer');
+      current.body.appendChild(footer);
+      if (!fits(current.body)) {
+        footer.remove();
+        if (!pageIsEmpty(current.body)) current = newPage();
+        current.body.appendChild(footer);
+      }
+    } else if (element.tagName === 'TABLE') {
+      addTable(element);
+    } else {
+      current.body.appendChild(element.cloneNode(true));
+      if (!fits(current.body)) {
+        const moved = current.body.lastElementChild;
+        moved.remove();
+        if (!pageIsEmpty(current.body)) current = newPage();
+        current.body.appendChild(moved);
+      }
+    }
+  });
+  const pages = [...preview.querySelectorAll('.invoice-screen-page')];
+  pages.forEach((page, index) => {
+    page.querySelector('.invoice-screen-page-number').textContent = `Page ${index + 1} of ${pages.length}`;
+  });
+  preview.style.removeProperty('display');
+  preview.style.removeProperty('visibility');
+  document.body.classList.add('invoice-preview-ready');
+})();
+</script><script>window.addEventListener('load',()=>window.setTimeout(()=>window.print(),400));</script>{% endif %}
+</body></html>

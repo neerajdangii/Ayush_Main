@@ -1,0 +1,129 @@
+{% extends 'base.html' %}{% block title %}Edit Invoice | LIMS{% endblock %}{% block content %}
+<style>
+  .bill-section { border: 1px solid #e1e4e8; border-radius: .5rem; background: #fff; padding: 1rem; height: 100%; }
+  .bill-section h5 { font-size: 1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: .55rem; margin-bottom: .8rem; }
+  .bill-label { color: #536174; font-size: .8rem; }
+  .bill-value { font-size: .9rem; overflow-wrap: anywhere; }
+  .bill-summary-row { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; border-bottom: 1px solid #edf0f4; }
+  .bill-grand-total { background: #fff3a6; font-weight: 700; padding: .6rem; }
+  .adjustment-row { display:grid; grid-template-columns:minmax(100px,1fr) minmax(220px,1.5fr) auto; align-items:center; gap:.65rem; padding:.4rem .55rem; border-bottom:1px solid #edf0f4; }
+  .adjustment-controls { display:flex; min-width:0; }
+  .adjustment-controls > * { border-radius:0; }
+  .adjustment-controls > :first-child { border-radius:.35rem 0 0 .35rem; }
+  .adjustment-controls > :last-child { border-radius:0 .35rem .35rem 0; }
+  .adjustment-controls input { min-width:50px; }
+  .adjustment-caption { border:1px dashed #ccd2dc; border-radius:.4rem; padding:.45rem .7rem; }
+  .round-off-row { display:flex; align-items:center; gap:.6rem; }
+  .round-off-row strong { margin-left:auto; }
+  .payment-choice { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.6rem; padding-top:.85rem; border-top:1px solid #e5e7eb; }
+  .payment-buttons { display:flex; flex-wrap:wrap; gap:.35rem; }
+  .payment-button input { position:absolute; opacity:0; }
+  .payment-button span { display:inline-block; border:1px solid #cbd5e1; border-radius:.5rem; padding:.45rem .8rem; color:#2563eb; cursor:pointer; }
+  .payment-button input:checked + span { color:#fff; background:#4b64c5; border-color:#4b64c5; }
+  .line-item-table input { min-width: 85px; }
+  .line-item-table input[name$="description"] { min-width: 180px; }
+  .line-item-table .product-note-cell { min-width: 220px; }
+  .line-item-table .product-note-cell textarea { margin-top: .35rem; min-width: 200px; }
+</style>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3"><div><h3 class="mb-1">Edit Invoice {{ invoice.invoice_number }}</h3><div class="text-muted">{% if invoice.status == 'draft' %}Draft bill · Printing or exporting does not pass the invoice.{% else %}Changes are saved to this passed invoice.{% endif %}</div></div><div class="d-flex gap-2">{% if perms.bookings.view_salesinvoice %}<a class="btn btn-outline-primary" href="{% url 'bookings:sales_invoice_print' invoice.pk %}">View / Print</a>{% endif %}<a class="btn btn-outline-secondary" href="{% url 'bookings:sales_invoice_list' %}">Back to Sales Invoices</a></div></div>
+<form method="post" id="sales-invoice-edit-form">{% csrf_token %}
+  {% if invoice.status == 'draft' %}<div class="alert alert-warning py-2">This is a draft bill. Pass it only after confirming all customer, tax, and payment details.</div>{% else %}<div class="alert alert-info py-2">This invoice has been passed. Saving changes will keep its invoice number and passed status.</div>{% endif %}
+  {% if invoice_form.non_field_errors %}<div class="alert alert-danger">{{ invoice_form.non_field_errors }}</div>{% endif %}
+  <div class="row g-3 mb-3">
+    <div class="col-lg-5"><section class="bill-section"><h5>Customer Information</h5>
+      <div class="row g-2">
+        {% for field in buyer_form %}<div class="col-12 {% if field.name == 'contact_person' or field.name == 'telephone' or field.name == 'gstin' or field.name == 'pan' or field.name == 'state_name' or field.name == 'state_code' %}col-md-6{% endif %}"><label class="form-label bill-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}
+      </div><div class="form-text">Changes here apply only to this invoice and do not change Customer Master.</div>
+    </section></div>
+    <div class="col-lg-7"><section class="bill-section"><h5>Invoice Details</h5><div class="row g-2">
+      {% for field in invoice_form %}{% if field.name == 'invoice_type' or field.name == 'invoice_date' or field.name == 'claim_number' or field.name == 'challan_number' or field.name == 'challan_date' or field.name == 'po_number' or field.name == 'po_date' or field.name == 'lr_number' or field.name == 'eway_number' or field.name == 'due_date' or field.name == 'delivery_mode' %}
+      <div class="col-md-6"><label class="form-label bill-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>
+      {% endif %}{% endfor %}
+      <div class="col-md-6"><div class="bill-label">Bill Number</div><div class="bill-value fw-semibold">{{ invoice.invoice_number }}</div><div class="form-text">Bill number format is managed from the Sales Invoices toolbar.</div></div>
+      <div class="col-md-6"><label class="form-label bill-label" for="{{ bank_form.selected_bank_detail.id_for_label }}">{{ bank_form.selected_bank_detail.label }}</label>{{ bank_form.selected_bank_detail }}{{ bank_form.selected_bank_detail.errors }}</div>
+    </div></section></div>
+  </div>
+
+  <section class="bill-section mb-3"><h5>Product Items</h5><div class="table-responsive"><table class="table table-sm table-bordered align-middle line-item-table mb-2"><thead class="table-light"><tr><th>Sr.</th><th>Product / Tests</th><th>HSN/SAC</th><th>Qty</th><th>UOM</th><th>Batch No.</th><th>Rate</th><th>Discount (₹)</th><th>CGST %</th><th>SGST %</th><th>IGST %</th></tr></thead><tbody>
+  {% for line_form in line_forms %}<tr><td>{{ forloop.counter }}{% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}</td><td class="product-note-cell">{{ line_form.description }}{% for error in line_form.description.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}{{ line_form.item_note }}{% for error in line_form.item_note.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}{{ line_form.sample_id.as_hidden }}</td>{% for field in line_form.visible_fields %}{% if field.name != 'description' and field.name != 'item_note' and field.name != 'sample_id' %}<td>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</td>{% endif %}{% endfor %}</tr>{% empty %}<tr><td colspan="11" class="text-center">No bill items yet.</td>{% endfor %}
+  </tbody></table></div><button class="btn btn-sm btn-outline-primary" name="add_line" value="1" formnovalidate>Add Product / Service</button></section>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><section class="bill-section"><h5>Bank Details for This Bill</h5><p class="text-muted small">Select the bank to print from Company Bank Details. Changes here apply only to this draft.</p>
+      <details class="mt-3"><summary>Edit bank account details for this draft</summary><div class="pt-2">{% for field in bank_form %}{% if field.name == 'bank_1_account_name' %}<h6 class="mt-3">Bank Detail 1</h6>{% endif %}{% if field.name == 'bank_2_account_name' %}<h6 class="mt-3">Bank Detail 2</h6>{% endif %}{% if field.name == 'bank_3_account_name' %}<h6 class="mt-3">Bank Detail 3</h6>{% endif %}{% if field.name == 'bank_4_account_name' %}<h6 class="mt-3">Bank Detail 4</h6>{% endif %}{% if field.name == 'bank_5_account_name' %}<h6 class="mt-3">Bank Detail 5</h6>{% endif %}{% if field.name == 'bank_6_account_name' %}<h6 class="mt-3">Bank Detail 6</h6>{% endif %}{% if field.name != 'selected_bank_detail' %}<div class="row align-items-center mb-2"><label class="col-sm-4 col-form-label bill-label" for="{{ field.id_for_label }}">{{ field.label }}</label><div class="col-sm-8">{{ field }}{{ field.errors }}</div></div>{% endif %}{% endfor %}</div></details>
+    </section></div>
+    <div class="col-lg-6"><section class="bill-section"><h5>Terms, Notes and Payment</h5><div class="row g-2">
+      {% for field in invoice_form %}{% if field.name == 'terms_title' or field.name == 'terms_detail' or field.name == 'document_remarks' %}<div class="col-12"><label class="form-label bill-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}
+    </div></section></div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><section class="bill-section invoice-adjustments"><h5>Totals and Adjustments</h5>
+      <div class="bill-summary-row"><span>Taxable</span><strong>₹ <span id="items-taxable-total">{{ invoice.taxable_total|floatformat:2 }}</span></strong></div>
+      <div class="bill-summary-row"><span><label for="{{ invoice_form.additional_charges.id_for_label }}">Add Additional Charge</label></span>{{ invoice_form.additional_charges }}{{ invoice_form.additional_charges.errors }}</div>
+      <div class="bill-summary-row"><span>Total Taxable</span><strong>₹ <span id="items-total-taxable">{{ invoice.taxable_total|floatformat:2 }}</span></strong></div>
+      <div class="bill-summary-row"><span>Total Tax</span><strong>₹ <span id="items-tax-total">{{ invoice.tax_total|floatformat:2 }}</span></strong></div>
+      <div class="adjustment-row"><span class="adjustment-caption">TCS</span><div class="adjustment-controls"><select id="tcs-sign" class="form-select" aria-label="TCS add or deduct"><option value="add" {% if not invoice.tcs_is_deduction %}selected{% endif %}>+</option><option value="subtract" {% if invoice.tcs_is_deduction %}selected{% endif %}>−</option></select>{{ invoice_form.tcs_rate }}{{ invoice_form.tcs_mode }}</div><strong>₹ <span id="items-tcs-total">{{ invoice.tcs_amount|floatformat:2 }}</span></strong></div>
+      {{ invoice_form.tcs_is_deduction.as_hidden }}
+      <div class="adjustment-row"><span class="adjustment-caption">Discount</span><div class="adjustment-controls"><select id="discount-sign" class="form-select" aria-label="Discount add or deduct"><option value="subtract" {% if not invoice.discount_is_addition %}selected{% endif %}>−</option><option value="add" {% if invoice.discount_is_addition %}selected{% endif %}>+</option></select>{{ invoice_form.discount_amount }}{{ invoice_form.discount_mode }}</div><strong>₹ <span id="items-discount-total">{{ invoice.discount_total|floatformat:2 }}</span></strong></div>
+      {{ invoice_form.discount_is_addition.as_hidden }}
+      <div class="adjustment-row round-off-row"><label for="{{ invoice_form.round_off_enabled.id_for_label }}">Round Off</label>{{ invoice_form.round_off_enabled }}<strong>₹ <span id="items-round-off">{{ invoice.round_off_amount|floatformat:2 }}</span></strong></div>
+      <div class="bill-summary-row bill-grand-total"><span>Grand Total</span><strong>₹ <span id="items-grand-total">{{ invoice.grand_total|floatformat:2 }}</span></strong></div>
+      <div class="bill-summary-row"><span>Total in Words</span><strong id="items-total-words">{{ total_words }}</strong></div>
+      <div class="payment-choice"><span>Payment Type <b class="text-danger">*</b></span><div class="payment-buttons">{% for value,label in invoice_form.fields.payment_type.choices %}<label class="payment-button payment-{{ value }}"><input type="radio" name="payment_type" value="{{ value }}" {% if invoice_form.payment_type.value == value %}checked{% endif %}><span>{{ label|upper }}</span></label>{% endfor %}</div>{{ invoice_form.payment_type.errors }}</div>
+    </section></div>
+      <div class="col-lg-6"><section class="bill-section"><h5>Invoice Notes</h5><div class="bill-label">Document / Number Remarks</div><div class="bill-value">{{ invoice.document_remarks|default:'-'|linebreaksbr }}</div><div class="bill-label mt-3">Customer note from master</div><div class="bill-value">{{ invoice.buyer_snapshot.note|default:'-'|linebreaksbr }}</div><div class="mt-3 text-muted small">Invoice totals are calculated from the saved line items and tax rates when you save the bill.</div></section></div>
+  </div>
+  <div class="d-flex flex-wrap gap-2"><a class="btn btn-outline-secondary" href="{% url 'bookings:sales_invoice_list' %}">Back</a>{% if invoice.status == 'draft' %}<button class="btn btn-outline-primary" name="save_action" value="draft">Save as Draft</button>{% if perms.bookings.finalize_salesinvoice %}<button class="btn btn-success" name="save_action" value="pass">Save &amp; Pass</button>{% endif %}{% else %}<button class="btn btn-primary" name="save_action" value="draft">Save Changes</button>{% endif %}</div>
+</form>
+<script>
+(() => {
+  const form = document.getElementById("sales-invoice-edit-form");
+  const num = (selector) => Number(form.querySelector(selector)?.value) || 0;
+  const money = (value) => Number(value || 0).toFixed(2);
+  const numberWords = (number) => {
+    const small = ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+    if (number < 20) return small[number];
+    if (number < 100) return `${tens[Math.floor(number / 10)]}${number % 10 ? ` ${small[number % 10]}` : ""}`;
+    for (const [size, label] of [[10000000, "Crore"], [100000, "Lakh"], [1000, "Thousand"], [100, "Hundred"]]) {
+      if (number >= size) return `${numberWords(Math.floor(number / size))} ${label}${number % size ? ` ${numberWords(number % size)}` : ""}`;
+    }
+    return "";
+  };
+  const update = () => {
+    let taxable = 0, cgst = 0, sgst = 0, igst = 0;
+    form.querySelectorAll(".line-item-table tbody tr").forEach((row) => {
+      const field = (suffix) => Number(row.querySelector(`[name$="-${suffix}"]`)?.value) || 0;
+      const quantity = field("quantity"), rate = field("rate"), lineDiscount = field("discount_amount");
+      const lineTaxable = Math.max(0, quantity * rate - lineDiscount);
+      taxable += lineTaxable;
+      cgst += lineTaxable * field("cgst_rate") / 100;
+      sgst += lineTaxable * field("sgst_rate") / 100;
+      igst += lineTaxable * field("igst_rate") / 100;
+    });
+    const additional = num('[name="additional_charges"]');
+    const discountValue = num('[name="discount_amount"]');
+    const discount = form.querySelector('[name="discount_mode"]')?.value === "percent" ? taxable * discountValue / 100 : discountValue;
+    const tcsValue = num('[name="tcs_rate"]');
+    const tcs = form.querySelector('[name="tcs_mode"]')?.value === "percent" ? taxable * tcsValue / 100 : tcsValue;
+    const deductTcs = form.querySelector("#tcs-sign")?.value === "subtract";
+    const addDiscount = form.querySelector("#discount-sign")?.value === "add";
+    const beforeRound = taxable + cgst + sgst + igst + (addDiscount ? discount : -discount) + additional + (deductTcs ? -tcs : tcs);
+    const total = form.querySelector('[name="round_off_enabled"]')?.checked ? Math.round(beforeRound) : beforeRound;
+    const set = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = money(value); };
+    set("items-taxable-total", taxable); set("items-total-taxable", taxable + additional); set("items-tax-total", cgst + sgst + igst);
+    set("items-tcs-total", deductTcs ? -tcs : tcs); set("items-discount-total", discount); set("items-round-off", total - beforeRound); set("items-grand-total", total);
+    document.getElementById("{{ invoice_form.tcs_is_deduction.id_for_label }}").value = deductTcs ? "on" : "";
+    document.getElementById("{{ invoice_form.discount_is_addition.id_for_label }}").value = addDiscount ? "on" : "";
+    const whole = Math.floor(Math.abs(total)), paise = Math.round((Math.abs(total) - whole) * 100);
+    document.getElementById("items-total-words").textContent = `${numberWords(whole).toUpperCase()} RUPEES${paise ? ` AND ${numberWords(paise).toUpperCase()} PAISE` : ""} ONLY`;
+  };
+  form.querySelectorAll('.line-item-table input, [name="additional_charges"], [name="discount_amount"], [name="discount_mode"], [name="tcs_rate"], [name="tcs_mode"], #tcs-sign, #discount-sign, [name="round_off_enabled"]').forEach((field) => { field.addEventListener("input", update); field.addEventListener("change", update); });
+  update();
+})();
+  document.querySelectorAll('#sales-invoice-edit-form input[type="number"]').forEach((field) => {
+    field.addEventListener("wheel", () => field.blur(), {passive: true});
+  });
+</script>
+{% endblock %}

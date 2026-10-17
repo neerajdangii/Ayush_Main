@@ -73,7 +73,7 @@
           </div>
         </div>
       </div>
-      <div class="coa-footer-barcode">
+      {% if show_qr_code %}<div class="coa-footer-barcode">
         <div class="coa-barcode coa-barcode--footer-right">
           {% if qr_image_data %}
             <img src="{{ qr_image_data }}" alt="Scan report QR code" width="90" height="90">
@@ -81,7 +81,7 @@
             <div class="coa-qr-code" data-qr-payload="{{ qr_payload }}"></div>
           {% endif %}
         </div>
-      </div>
+      </div>{% endif %}
     </div>
   </div>
 </div>
@@ -164,7 +164,7 @@
           </div>
         </div>
       </div>
-      <div class="coa-footer-barcode">
+      {% if show_qr_code %}<div class="coa-footer-barcode">
         <div class="coa-barcode coa-barcode--footer-right">
           {% if qr_image_data %}
             <img src="{{ qr_image_data }}" alt="Scan report QR code" width="90" height="90">
@@ -172,7 +172,7 @@
             <div class="coa-qr-code" data-qr-payload="{{ qr_payload }}"></div>
           {% endif %}
         </div>
-      </div>
+      </div>{% endif %}
     </div>
   </div>
 </div>

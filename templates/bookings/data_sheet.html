@@ -78,19 +78,19 @@
     </div>
     <div class="table-responsive mt-4">
       <table class="table table-bordered table-sm align-middle mb-0">
-        <thead class="table-light"><tr><th>Sr. No.</th><th>Sample Name</th><th>Batch No.</th><th>Booking No.</th><th>Letter Date</th><th>Booking Date</th><th>Booking Status</th><th>Processing Status</th><th>Party Name</th></tr></thead>
+        <thead class="table-light"><tr><th>Sr. No.</th><th>Sample Name</th><th>Batch No.</th><th>Booking No.</th><th>Letter Date</th><th>Booking Date</th><th>Completion Date</th><th>Booking Status</th><th>Processing Status</th><th>Party Name</th></tr></thead>
         <tbody>
           {% for booking in party_pending_bookings %}
           <tr>
             <td>{{ forloop.counter }}</td><td>{{ booking.sample_name.display_name|default:'-' }}</td><td>{{ booking.batch_no|default:'-' }}</td>
             <td><a href="{% url 'bookings:detail' booking.pk %}">{{ booking.tracking_code }}</a></td>
-            <td>{{ booking.letter_date|date:'d/m/Y'|default:'-' }}</td><td>{{ booking.booking_date|date:'d/m/Y' }}</td>
+            <td>{{ booking.letter_date|date:'d/m/Y'|default:'-' }}</td><td>{{ booking.booking_date|date:'d/m/Y' }}</td><td>{{ booking.completion_date|date:'d/m/Y'|default:'-' }}</td>
             <td><span class="badge text-bg-{% if booking.status == 'pending' %}warning{% else %}success{% endif %}">{{ booking.get_status_display }}</span></td>
             <td><span class="badge text-bg-{% if booking.party_status == 'Pending' %}warning{% elif booking.party_status == 'Pass' %}success{% elif booking.party_status == 'Draft' %}secondary{% else %}primary{% endif %}">{{ booking.party_status }}</span></td>
             <td>{{ booking.customer.name|default:'-' }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="9" class="text-center text-muted">No records match the selected filters.</td></tr>
+          <tr><td colspan="10" class="text-center text-muted">No records match the selected filters.</td></tr>
           {% endfor %}
         </tbody>
       </table>

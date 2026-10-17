@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Sales Invoices | LIMS{% endblock %}
+{% block content %}
+<style>
+  .sales-invoice-register { min-width: 1120px; border-color:#e8ebf0; }
+  .sales-invoice-register thead th { padding:.85rem .75rem; white-space:nowrap; color:#445064; font-size:.88rem; font-weight:600; border-bottom:1px solid #e5e7eb; }
+  .sales-invoice-register tbody td { padding:.85rem .75rem; vertical-align:middle; }
+  .sales-invoice-register .invoice-number { color:#344054; font-weight:500; white-space:nowrap; }
+  .sales-invoice-register .company-name { min-width:210px; }
+  .sales-invoice-register .register-actions { min-width:260px; white-space:nowrap; }
+</style>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h3 class="mb-0">Sales Invoices</h3>
+  <div class="d-flex flex-wrap gap-2">
+    {% if perms.reports.view_report_data_sheet %}<a class="btn btn-outline-success" href="{% url 'reports:data_sheet' %}">Report Data Sheet</a>{% endif %}
+    {% if perms.bookings.manage_invoice_customers %}<a class="btn btn-outline-primary" href="{% url 'bookings:invoice_customer_list' %}">Invoice Customer Master</a>{% endif %}
+    {% if perms.bookings.manage_company_billing_settings %}<a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_print_template_master' %}">Invoice Template Master</a><a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_settings' %}#bill-number-settings">Bill Number</a>{% endif %}
+    <a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_settings' %}">Company Bank Details</a>
+    <a class="btn btn-primary" href="{% url 'bookings:sales_invoice_create' %}">Create New Bill</a>
+  </div>
+</div>
+
+<form method="get" class="card card-body mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-7">
+      <label class="form-label" for="invoice-search">Search invoices</label>
+      <input class="form-control" id="invoice-search" type="search" name="q" value="{{ search_query }}" placeholder="Bill number, buyer, challan or P.O. number">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="invoice-status">Status</label>
+      <select class="form-select" id="invoice-status" name="status">
+        <option value="" {% if not selected_status %}selected{% endif %}>All invoices</option>
+        <option value="draft" {% if selected_status == 'draft' %}selected{% endif %}>Draft</option>
+        <option value="finalized" {% if selected_status == 'finalized' %}selected{% endif %}>Passed</option>
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Search</button>
+      <a class="btn btn-outline-secondary" href="{% url 'bookings:sales_invoice_list' %}">Reset</a>
+    </div>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table bg-white align-middle sales-invoice-register">
+    <thead><tr><th aria-label="Select invoices"><input class="form-check-input" type="checkbox" id="select-all-invoices" aria-label="Select all invoices"></th><th>Invoice No <span class="text-muted">⌄</span></th><th>Company Name</th><th>Contact Person</th><th class="text-end">Total Qty.</th><th>Invoice Date</th><th class="text-end">Total (₹)</th><th class="text-end">Outstanding (₹)</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for invoice in invoices %}
+      <tr>
+        <td><input class="form-check-input invoice-row-select" type="checkbox" value="{{ invoice.pk }}" aria-label="Select invoice {{ invoice.invoice_number|default:invoice.pk }}"></td>
+        <td class="invoice-number">{{ invoice.invoice_number|default:"Draft" }}</td>
+        <td class="company-name">{{ invoice.buyer_snapshot.name|default:"—" }}</td>
+        <td>{{ invoice.buyer_snapshot.contact_person|default:"—" }}</td>
+        <td class="text-end">{{ invoice.total_quantity|default:0|floatformat:2 }}</td>
+        <td>{{ invoice.invoice_date|date:"d-M-y" }}</td>
+        <td class="text-end">{{ invoice.grand_total|floatformat:2 }}</td>
+        <td class="text-end">{{ invoice.grand_total|floatformat:2 }}</td>
+        <td class="register-actions">
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'bookings:sales_invoice_print' invoice.pk %}">View / Print</a>
+            {% if perms.bookings.manage_sales_invoices %}
+              <a class="btn btn-sm btn-outline-secondary" href="{% url 'bookings:sales_invoice_edit' invoice.pk %}">Edit</a>
+              {% if invoice.status == 'draft' and perms.bookings.finalize_salesinvoice %}
+              <form method="post" action="{% url 'bookings:sales_invoice_finalize' invoice.pk %}" class="d-inline" onsubmit="return confirm('Pass this draft invoice? This assigns and finalizes its bill number.');">
+                {% csrf_token %}<input type="hidden" name="return_to_list" value="1"><button type="submit" class="btn btn-sm btn-success">Pass</button>
+              </form>
+              {% endif %}
+              <form method="post" action="{% url 'bookings:sales_invoice_delete' invoice.pk %}" class="d-inline" onsubmit="return confirm('Delete this invoice? This cannot be undone.');">
+                {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-center">No invoices match this search.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+  const selectAllInvoices = document.getElementById("select-all-invoices");
+  selectAllInvoices?.addEventListener("change", () => document.querySelectorAll(".invoice-row-select").forEach((checkbox) => { checkbox.checked = selectAllInvoices.checked; }));
+</script>
+
+{% if is_paginated %}
+<nav aria-label="Invoice pages"><ul class="pagination">
+  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?q={{ search_query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+  <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?q={{ search_query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

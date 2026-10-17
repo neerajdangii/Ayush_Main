@@ -270,6 +270,7 @@ class Report(models.Model):
     )
 
     analysis_end_date = models.DateTimeField(null=True, blank=True)
+    show_qr_code = models.BooleanField(default=True)
     report_template = models.ForeignKey(
         ReportTemplate,
         on_delete=models.SET_NULL,
@@ -341,6 +342,7 @@ class Report(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        permissions = [("view_report_data_sheet", "Can view Report Data Sheet")]
 
     @property
     def certificate_no(self) -> str:

@@ -16,7 +16,7 @@
   </div>
   {% endblock %}
   {% block extra_js %}
-  {% if not qr_image_data %}
+  {% if show_qr_code and not qr_image_data %}
   <script src="{% static 'js/qrcode.min.js' %}"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function () {

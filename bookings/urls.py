@@ -26,6 +26,11 @@ from .views import (
     PartyPendingExcelView,
     PartyPendingPrintView,
 )
+from .invoice_views import (CompanyBillingSettingsView, InvoiceCustomerMasterCreateView,
+                            InvoiceCustomerMasterListView, InvoiceCustomerMasterUpdateView,
+                            InvoiceBatchSampleLookupView, InvoicePrintTemplateMasterView,
+                            SalesInvoiceCreateView, SalesInvoiceEditView, SalesInvoiceFinalizeView,
+                            SalesInvoiceDeleteView, SalesInvoiceListView, SalesInvoicePrintView)
 
 app_name = "bookings"
 
@@ -42,6 +47,18 @@ urlpatterns = [
     path("billing/undo-history/", BillingUndoHistoryView.as_view(), name="billing_undo_history"),
     path("billing/excel/<str:state>/", BillingExcelView.as_view(), name="billing_excel"),
     path("billing/print/<str:state>/", BillingPrintView.as_view(), name="billing_print"),
+    path("sales-invoices/", SalesInvoiceListView.as_view(), name="sales_invoice_list"),
+    path("sales-invoices/new/", SalesInvoiceCreateView.as_view(), name="sales_invoice_create"),
+    path("sales-invoices/batch-sample-lookup/", InvoiceBatchSampleLookupView.as_view(), name="invoice_batch_lookup"),
+    path("sales-invoices/customers/", InvoiceCustomerMasterListView.as_view(), name="invoice_customer_list"),
+    path("sales-invoices/customers/add/", InvoiceCustomerMasterCreateView.as_view(), name="invoice_customer_add"),
+    path("sales-invoices/customers/<int:pk>/edit/", InvoiceCustomerMasterUpdateView.as_view(), name="invoice_customer_edit"),
+    path("sales-invoices/template-master/", InvoicePrintTemplateMasterView.as_view(), name="invoice_print_template_master"),
+    path("sales-invoices/<int:pk>/delete/", SalesInvoiceDeleteView.as_view(), name="sales_invoice_delete"),
+    path("sales-invoices/<int:pk>/edit/", SalesInvoiceEditView.as_view(), name="sales_invoice_edit"),
+    path("sales-invoices/<int:pk>/print/", SalesInvoicePrintView.as_view(), name="sales_invoice_print"),
+    path("sales-invoices/<int:pk>/finalize/", SalesInvoiceFinalizeView.as_view(), name="sales_invoice_finalize"),
+    path("invoice-settings/", CompanyBillingSettingsView.as_view(), name="invoice_settings"),
     path("view/<int:pk>/", BookingDetailView.as_view(), name="detail"),
     path("<int:pk>/edit/", BookingUpdateView.as_view(), name="edit"),
     path("<int:pk>/delete/", BookingDeleteView.as_view(), name="delete"),

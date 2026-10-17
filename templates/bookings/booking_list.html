@@ -82,7 +82,7 @@
               {% endif %}
             </td>
             <td>{{ b.certificate_no }}</td>
-            <td><span class="tracking-chip">{{ b.tracking_code }}</span></td>
+            <td><span class="tracking-chip{% if perms.bookings.view_booking_change_audit and b.has_audit_changes %} change-audit-highlight{% endif %}"{% if perms.bookings.view_booking_change_audit and b.has_audit_changes %} title="This booking has recorded changes"{% endif %}>{{ b.tracking_code }}</span></td>
             <td>{{ b.booking_date|date:"d/m/Y" }}</td>
             <td>
               {% with full_name=b.created_by.get_full_name %}

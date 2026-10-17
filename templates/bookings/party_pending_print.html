@@ -22,17 +22,18 @@
     <tbody>{% for row in party_summary %}<tr><td>{{ row.party_name }}</td><td>{{ row.sample_count }}</td></tr>{% empty %}<tr><td colspan="2" style="text-align:center">No bookings match the selected filters.</td></tr>{% endfor %}</tbody>
   </table>
   <table>
-    <thead><tr><th>Sr. No.</th><th>Sample Name</th><th>Batch No.</th><th>Booking No.</th><th>Letter Date</th><th>Booking Date</th><th>Booking Status</th><th>Processing Status</th><th>Party Name</th></tr></thead>
+    <thead><tr><th>Sr. No.</th><th>Sample Name</th><th>Batch No.</th><th>Booking No.</th><th>Letter Date</th><th>Booking Date</th><th>Completion Date</th><th>Booking Status</th><th>Processing Status</th><th>Party Name</th></tr></thead>
     <tbody>
       {% for booking in bookings %}
       <tr>
         <td>{{ forloop.counter }}</td><td>{{ booking.sample_name.display_name|default:'-' }}</td>
         <td>{{ booking.batch_no|default:'-' }}</td><td>{{ booking.tracking_code }}</td>
         <td>{{ booking.letter_date|date:'d/m/Y'|default:'-' }}</td><td>{{ booking.booking_date|date:'d/m/Y' }}</td>
+        <td>{{ booking.completion_date|date:'d/m/Y'|default:'-' }}</td>
         <td>{{ booking.get_status_display }}</td><td>{{ booking.party_status }}</td><td>{{ booking.customer.name|default:'-' }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" style="text-align:center">No records match the selected filters.</td></tr>
+      <tr><td colspan="10" style="text-align:center">No records match the selected filters.</td></tr>
       {% endfor %}
     </tbody>
   </table>

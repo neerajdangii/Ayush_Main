@@ -60,7 +60,7 @@
       <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
           <div>
-            <h5 class="mb-1">#{{ booking.tracking_code }} ~ {{ booking.sample_name.display_name|default:"N.A" }} ~ {{ booking.sample_registration_no|default:"N.A" }}</h5>
+            <h5 class="mb-1">#<span{% if has_change_audit %} class="change-audit-highlight" title="This booking has recorded changes"{% endif %}>{{ booking.tracking_code }}</span> ~ {{ booking.sample_name.display_name|default:"N.A" }} ~ {{ booking.sample_registration_no|default:"N.A" }}</h5>
             {% if booking.is_reported %}
             <span class="badge text-bg-success" id="bookingStatusBadge">Approved</span>
             {% elif booking.status == 'approved' %}

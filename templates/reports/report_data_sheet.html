@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Report Data Sheet | LIMS{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div><h4 class="mb-0">Report Data Sheet</h4><div class="text-muted small">Invoiced samples are hidden by default. Use “Include invoiced samples” to view them.</div></div>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'reports:list' %}">Back to Reports</a>
+</div>
+<div class="card shadow-sm"><div class="card-body">
+  <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-md-2"><label class="form-label" for="reportSearchBy">Search by</label><select class="form-select" id="reportSearchBy" name="search_by">
+      <option value="booking_id" {% if search_by == 'booking_id' %}selected{% endif %}>Booking ID</option><option value="sample_reg" {% if search_by == 'sample_reg' %}selected{% endif %}>Sample Reg. No.</option><option value="batch" {% if search_by == 'batch' %}selected{% endif %}>Batch No.</option><option value="party" {% if search_by == 'party' %}selected{% endif %}>Party</option><option value="sample" {% if search_by == 'sample' %}selected{% endif %}>Sample Name</option>
+    </select></div>
+    <div class="col-md-3"><label class="form-label" for="reportQuery">Search</label><input class="form-control" id="reportQuery" name="q" value="{{ search_query }}" placeholder="Enter search text"></div>
+    <div class="col-md-2"><label class="form-label" for="reportParty">Party</label><select class="form-select" id="reportParty" name="party"><option value="">All parties</option>{% for party in party_options %}<option value="{{ party.pk }}" {% if selected_party == party.pk|stringformat:'s' %}selected{% endif %}>{{ party.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label" for="sampleName">Sample name</label><input class="form-control" id="sampleName" name="sample" value="{{ selected_sample }}" placeholder="Contains"></div>
+    <div class="col-md-2"><label class="form-label" for="reportOutcome">Outcome</label><select class="form-select" id="reportOutcome" name="outcome"><option value="">All</option>{% for value,label in outcome_options %}<option value="{{ value }}" {% if selected_outcome == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-2"><label class="form-label" for="reportBatch">Batch No.</label><input class="form-control" id="reportBatch" name="batch" value="{{ selected_batch }}" placeholder="Contains"></div>
+    <div class="col-md-2"><label class="form-label" for="reportDateFrom">Booking From</label><input class="form-control" type="date" id="reportDateFrom" name="date_from" value="{{ report_date_from }}"></div>
+    <div class="col-md-2"><label class="form-label" for="reportDateTo">Booking To</label><input class="form-control" type="date" id="reportDateTo" name="date_to" value="{{ report_date_to }}"></div>
+    <div class="col-md-3"><div class="form-check"><input class="form-check-input" type="checkbox" id="includeInvoiced" name="include_invoiced" value="1" {% if include_invoiced %}checked{% endif %}><label class="form-check-label" for="includeInvoiced">Include invoiced samples</label></div></div>
+    <div class="col-md-1 d-flex gap-1"><button class="btn btn-primary" type="submit">Find</button><a class="btn btn-outline-secondary" href="{% url 'reports:data_sheet' %}">Reset</a></div>
+  </form>
+  {% if perms.bookings.manage_sales_invoices %}<div class="d-flex justify-content-end align-items-center gap-2 mb-2"><span class="small text-muted"><span id="selected-report-count">0</span> passed samples selected</span><button type="button" class="btn btn-sm btn-outline-secondary" id="select-visible-reports">Select visible passed</button><button type="button" class="btn btn-sm btn-primary" id="create-bill-from-reports" disabled>Create Bill from Selected</button></div>{% endif %}
+  <div class="table-responsive"><table class="table table-bordered table-sm table-striped align-middle mb-2">
+    <thead class="table-light"><tr>{% if perms.bookings.manage_sales_invoices %}<th>Select</th>{% endif %}<th>#</th><th>Party</th><th>Sample Name</th><th>Sample Reg. No.</th><th>Booking ID</th><th>Batch No.</th><th>Booking Date</th><th>Completion Date</th><th>Report Status</th><th>Outcome</th><th>Modified By</th><th>Actions</th></tr></thead>
+    <tbody>{% for report in report_rows %}<tr>
+      {% if perms.bookings.manage_sales_invoices %}<td>{% if report.final_outcome == 'pass' and not report.has_sales_invoice %}<input class="form-check-input report-bill-select" type="checkbox" value="{{ report.booking_id }}" aria-label="Select {{ report.booking.tracking_code }} for billing">{% else %}<span class="text-muted">—</span>{% endif %}</td>{% endif %}
+      <td>{{ page_obj.start_index|add:forloop.counter0 }}</td><td>{{ report.booking.customer.name|default:'-' }}</td><td>{{ report.booking.sample_name.display_name|default:'-' }}</td>
+      <td>{{ report.booking.sample_reg_no|default:'-' }}</td><td>{% if perms.bookings.view_booking %}<a href="{% url 'bookings:detail' report.booking_id %}">{{ report.booking.tracking_code }}</a>{% else %}{{ report.booking.tracking_code }}{% endif %}</td><td>{{ report.booking.batch_no|default:'-' }}</td>
+      <td>{{ report.booking.booking_date|date:'d/m/Y'|default:'-' }}</td><td>{% firstof report.analysis_end_date report.booking.analysis_end_date as complete_date %}{{ complete_date|date:'d/m/Y'|default:'-' }}</td>
+      <td>{{ report.get_status_display }}</td><td>{{ report.get_final_outcome_display }}</td><td>{{ report.updated_by_display|default:'-' }}</td>
+      <td class="text-nowrap">{% if perms.reports.view_report %}<a class="btn btn-sm btn-outline-primary" href="{% url 'reports:coa_print' report.pk %}">View</a>{% endif %}</td>
+    </tr>{% empty %}<tr><td colspan="{% if perms.bookings.manage_sales_invoices %}13{% else %}12{% endif %}" class="text-center text-muted py-3">No reports match these filters.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if is_paginated %}<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="small text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} reports</div>
+    <nav aria-label="Report Data Sheet pages"><ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Previous</span></li>{% endif %}
+      {% for page_number in page_numbers %}{% if page_number == page_obj.paginator.ELLIPSIS %}<li class="page-item disabled"><span class="page-link">{{ page_number }}</span></li>{% elif page_number == page_obj.number %}<li class="page-item active"><span class="page-link">{{ page_number }}</span></li>{% else %}<li class="page-item"><a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_number }}">{{ page_number }}</a></li>{% endif %}{% endfor %}
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{% if pagination_query %}{{ pagination_query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Next</span></li>{% endif %}
+    </ul></nav>
+  </div>{% endif %}
+</div></div>
+{% endblock %}
+
+{% block extra_js %}
+{% if perms.bookings.manage_sales_invoices %}
+<script>
+(() => {
+  const checkboxes = Array.from(document.querySelectorAll(".report-bill-select"));
+  const button = document.getElementById("create-bill-from-reports");
+  const count = document.getElementById("selected-report-count");
+  const update = () => {
+    const selected = checkboxes.filter((item) => item.checked);
+    count.textContent = selected.length;
+    button.disabled = selected.length === 0;
+  };
+  checkboxes.forEach((item) => item.addEventListener("change", update));
+  document.getElementById("select-visible-reports").addEventListener("click", () => {
+    checkboxes.forEach((item) => { item.checked = true; });
+    update();
+  });
+  button.addEventListener("click", () => {
+    const selected = checkboxes.filter((item) => item.checked);
+    if (!selected.length) return;
+    const params = new URLSearchParams();
+    selected.forEach((item) => params.append("booking_id", item.value));
+    params.set("from_data_sheet", "1");
+    window.location.href = "{% url 'bookings:sales_invoice_create' %}?" + params.toString();
+  });
+  update();
+})();
+</script>
+{% endif %}
+{% endblock %}

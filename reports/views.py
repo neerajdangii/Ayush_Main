@@ -7,13 +7,16 @@ from pathlib import Path
 import re
 
 from django.contrib import messages
-from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth import get_user_model
+from django.db.models import Exists, OuterRef
+from django.db.models import Q
 from django.http import Http404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import linebreaksbr
@@ -24,7 +27,8 @@ from django.views.generic import CreateView, DeleteView, DetailView, FormView, L
 from django.utils.decorators import method_decorator
 
 from accounts.models import SystemSetting
-from bookings.models import Booking
+from bookings.models import Booking, ChangeAuditEntry, CustomerMaster, SalesInvoiceLine
+from bookings.change_audit import record_coa_edit
 from bookings.permissions import RoleRequiredMixin, has_role
 
 from .forms import COAEditForm, COALetterheadForm, ReportApprovalForm, ReportTemplateForm, TDSDocumentTemplateForm, TestLetterheadForm, _extract_uploaded_printable_content
@@ -114,6 +118,7 @@ def _get_report_render_context(report, request, *, preview_mode, auto_print, is_
         "auto_print": auto_print,
         "is_plain_doc": is_plain_doc,
         "is_test_report": is_test_report,
+        "show_qr_code": report.show_qr_code,
         "document_title": "Test Report" if is_test_report else "Certificate of Analysis",
         "tail_html": mark_safe(tail_html),
         "draft_remark_text": remark_text,
@@ -1433,6 +1438,13 @@ class ReportListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
             "manager",
             "incharge",
             "updated_by",
+        ).annotate(
+            has_coa_audit=Exists(
+                ChangeAuditEntry.objects.filter(
+                    report_id_value=OuterRef("pk"),
+                    area=ChangeAuditEntry.Area.COA,
+                )
+            )
         ).filter(
             status__in=[Report.Status.MANAGER_APPROVED, Report.Status.INCHARGE_APPROVED]
         ).order_by("-updated_at", "-pk")
@@ -1484,6 +1496,104 @@ class ReportListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
                 on_ends=1,
             )
         return context
+
+
+class ReportDataSheetView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    """Searchable, paginated register containing every saved report record."""
+    permission_required = "reports.view_report_data_sheet"
+    model = Report
+    template_name = "reports/report_data_sheet.html"
+    context_object_name = "report_rows"
+    paginate_by = 25
+
+    def get_queryset(self):
+        queryset = Report.objects.select_related(
+            "booking", "booking__customer", "booking__sample_name", "manager", "incharge", "updated_by"
+        ).annotate(
+            has_sales_invoice=Exists(SalesInvoiceLine.objects.filter(booking_id=OuterRef("booking_id")))
+        ).order_by("-created_at", "-pk")
+        include_invoiced = self.request.GET.get("include_invoiced") == "1"
+        if not include_invoiced:
+            queryset = queryset.filter(has_sales_invoice=False)
+        party = self.request.GET.get("party", "").strip()
+        sample_name = self.request.GET.get("sample", "").strip()
+        search = self.request.GET.get("q", "").strip()
+        search_by = self.request.GET.get("search_by", "booking_id").strip()
+        report_status = self.request.GET.get("report_status", "").strip()
+        outcome = self.request.GET.get("outcome", "").strip()
+        batch = self.request.GET.get("batch", "").strip()
+        date_from = self.request.GET.get("date_from", "").strip()
+        date_to = self.request.GET.get("date_to", "").strip()
+        if party:
+            queryset = queryset.filter(booking__customer_id=party)
+        if sample_name:
+            queryset = queryset.filter(Q(booking__sample_name__name__icontains=sample_name) | Q(booking__sample_name__generic_name__icontains=sample_name))
+        if search:
+            filters = {
+                "booking_id": "booking__tracking_code__icontains",
+                "sample_reg": "booking__sample_reg_no__icontains",
+                "batch": "booking__batch_no__icontains",
+                "party": "booking__customer__name__icontains",
+            }
+            if search_by == "sample":
+                queryset = queryset.filter(Q(booking__sample_name__name__icontains=search) | Q(booking__sample_name__generic_name__icontains=search))
+            else:
+                queryset = queryset.filter(**{filters.get(search_by, filters["booking_id"]): search})
+        if report_status in Report.Status.values:
+            queryset = queryset.filter(status=report_status)
+        if outcome in Report.FinalOutcome.values:
+            queryset = queryset.filter(final_outcome=outcome)
+        if batch:
+            queryset = queryset.filter(booking__batch_no__icontains=batch)
+        try:
+            if date_from:
+                queryset = queryset.filter(booking__booking_date__date__gte=date.fromisoformat(date_from))
+        except ValueError:
+            date_from = ""
+        try:
+            if date_to:
+                queryset = queryset.filter(booking__booking_date__date__lte=date.fromisoformat(date_to))
+        except ValueError:
+            date_to = ""
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            party_options=CustomerMaster.objects.filter(bookings__report__isnull=False).distinct().order_by("name"),
+            selected_party=self.request.GET.get("party", "").strip(),
+            selected_sample=self.request.GET.get("sample", "").strip(),
+            search_query=self.request.GET.get("q", "").strip(),
+            search_by=self.request.GET.get("search_by", "booking_id").strip(),
+            selected_report_status=self.request.GET.get("report_status", "").strip(),
+            selected_outcome=self.request.GET.get("outcome", "").strip(),
+            report_status_options=Report.Status.choices,
+            outcome_options=Report.FinalOutcome.choices,
+            selected_batch=self.request.GET.get("batch", "").strip(),
+            report_date_from=self.request.GET.get("date_from", "").strip(),
+            report_date_to=self.request.GET.get("date_to", "").strip(),
+            include_invoiced=self.request.GET.get("include_invoiced") == "1",
+        )
+        query_params = self.request.GET.copy()
+        query_params.pop("page", None)
+        context["pagination_query"] = query_params.urlencode()
+        if context.get("is_paginated"):
+            context["page_numbers"] = context["page_obj"].paginator.get_elided_page_range(context["page_obj"].number, on_each_side=2, on_ends=1)
+        return context
+
+
+class ReportQRToggleView(PermissionRequiredMixin, RoleRequiredMixin, View):
+    permission_required = "reports.change_report"
+    required_roles = ("Manager", "Incharge", "Analyst", "Admin")
+
+    def post(self, request, pk):
+        report = get_object_or_404(Report, pk=pk)
+        report.show_qr_code = request.POST.get("show_qr_code") == "1"
+        report.save(update_fields=["show_qr_code"])
+        destination = request.POST.get("next", "")
+        if not url_has_allowed_host_and_scheme(destination, allowed_hosts={request.get_host()}):
+            destination = reverse("reports:list")
+        return redirect(destination)
 
 
 class TDSDocumentTemplateListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
@@ -1986,6 +2096,9 @@ class COAEditView(PermissionRequiredMixin, RoleRequiredMixin, UpdateView):
             }
             for report in previous_reports[:20]
         ]
+        context["has_coa_change_audit"] = ChangeAuditEntry.objects.filter(
+            booking_id=self.object.booking_id
+        ).exists()
         return context
 
     def get_success_url(self):
@@ -1995,7 +2108,36 @@ class COAEditView(PermissionRequiredMixin, RoleRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
-        return super().form_valid(form)
+        report = self.object
+        response = super().form_valid(form)
+        record_coa_edit(booking=report.booking, report_id=report.pk, user=self.request.user)
+        return response
+
+
+class ChangeAuditListView(PermissionRequiredMixin, ListView):
+    permission_required = "bookings.view_booking_change_audit"
+    model = ChangeAuditEntry
+    template_name = "reports/change_audit_list.html"
+    context_object_name = "audit_entries"
+    paginate_by = 50
+
+    def get_queryset(self):
+        queryset = ChangeAuditEntry.objects.select_related("booking", "changed_by")
+        booking_id = self.request.GET.get("booking_id", "").strip()
+        area = self.request.GET.get("area", "booking").strip()
+        if booking_id:
+            queryset = queryset.filter(booking_code__icontains=booking_id)
+        if area in ChangeAuditEntry.Area.values:
+            queryset = queryset.filter(area=area)
+        else:
+            queryset = queryset.none()
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["booking_id"] = self.request.GET.get("booking_id", "").strip()
+        context["area"] = self.request.GET.get("area", "booking").strip()
+        return context
 
 
 class COAPrintView(PermissionRequiredMixin, RoleRequiredMixin, DetailView):
