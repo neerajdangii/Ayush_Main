@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}QR Verification Portal Master | LIMS{% endblock %}
+{% block extra_head %}
+<script>
+  const arlStaticPrefix = "{% get_static_prefix %}";
+  window.tinyMCEPreInit = { base: `${arlStaticPrefix}js/tinymce`, baseURL: `${arlStaticPrefix}js/tinymce`, suffix: ".min" };
+  window.arlTinyMceConfig = {
+    baseUrl: `${arlStaticPrefix}js/tinymce`,
+    skinUrl: `${arlStaticPrefix}js/tinymce/skins/ui/oxide`,
+    contentCss: "{% static 'js/tinymce/skins/content/default/content.min.css' %}"
+  };
+</script>
+<script src="{% static 'js/tinymce_storage_guard.js' %}"></script>
+<script src="{% static 'js/tinymce/tinymce.min.js' %}"></script>
+{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h3 class="mb-1">Report QR Verification Portal Master</h3>
+  </div>
+  <a class="btn btn-outline-secondary" href="{% url 'dashboard' %}">Dashboard</a>
+</div>
+<form method="post" class="card shadow-sm">
+  {% csrf_token %}
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    <h5 class="mb-2">Custom portal layout</h5>
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.layout_html.id_for_label }}">{{ form.layout_html.label }}</label>
+      {{ form.layout_html }}
+      {{ form.layout_html.errors }}
+    </div>
+    <hr>
+    <h5 class="mb-3">Public page options</h5>
+    <div class="d-flex flex-wrap gap-4">
+      <div class="form-check">
+        {{ form.verification_page_enabled }}
+        <label class="form-check-label" for="{{ form.verification_page_enabled.id_for_label }}">Enable verification page</label>
+        {{ form.verification_page_enabled.errors }}
+      </div>
+      <div class="form-check">
+        {{ form.public_report_enabled }}
+        <label class="form-check-label" for="{{ form.public_report_enabled.id_for_label }}">Enable public report</label>
+        {{ form.public_report_enabled.errors }}
+      </div>
+    </div>
+  </div>
+  <div class="card-footer bg-white d-flex justify-content-end">
+    <button type="submit" class="btn btn-primary">Save Portal Design</button>
+  </div>
+</form>
+{% endblock %}
+{% block extra_js %}
+<script>
+  (function () {
+    const selector = 'textarea[data-editor="tinymce"]';
+    const init = function () {
+      const textarea = document.querySelector(selector);
+      if (!textarea || !window.tinymce || window.tinymce.get(textarea.id)) return;
+      window.tinymce.init({
+        base_url: window.arlTinyMceConfig.baseUrl,
+        suffix: '.min', skin_url: window.arlTinyMceConfig.skinUrl,
+        content_css: window.arlTinyMceConfig.contentCss,
+        selector, height: 560, menubar: 'file edit view insert format table tools',
+        plugins: 'lists table link code advlist charmap preview',
+        toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline forecolor backcolor | alignleft aligncenter alignright | bullist numlist | table link | removeformat code preview',
+        table_default_attributes: { border: '1', style: 'border-collapse:collapse;width:100%;' },
+        table_responsive_width: true, branding: false, license_key: 'gpl'
+      });
+      const form = textarea.form;
+      if (form && !form.dataset.editorSaveBound) {
+        form.dataset.editorSaveBound = '1';
+        form.addEventListener('submit', function () { window.tinymce.triggerSave(); });
+      }
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+  })();
+</script>
+{% endblock %}

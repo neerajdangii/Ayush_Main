@@ -71,17 +71,17 @@
         {% for r in reports %}
         <tr>
           <td>{{ forloop.counter }}</td>
-          <td>{{ r.certificate_no }}</td>
-          <td>
+          <td class="data-text-cell">{{ r.certificate_no }}</td>
+          <td class="data-text-cell">
             {{ r.booking.sample_registration_no }}
             {% if r.booking.batch_no %}
             <div class="text-muted small">Batch: {{ r.booking.batch_no }}</div>
             {% endif %}
           </td>
-          <td><span class="tracking-chip{% if r.has_coa_audit %} change-audit-highlight{% endif %}"{% if r.has_coa_audit %} title="This COA has been edited"{% endif %}>{{ r.booking.tracking_code }}</span></td>
-          <td>{{ r.booking.sample_name.display_name }}</td>
-          <td>{{ r.booking.customer.name|default:'-' }}</td>
-          <td>{{ r.remark_text|default:'-'|truncatechars:120 }}</td>
+          <td class="data-text-cell"><span class="tracking-chip{% if r.has_coa_audit %} change-audit-highlight{% endif %}"{% if r.has_coa_audit %} title="This COA has been edited"{% endif %}>{{ r.booking.tracking_code }}</span></td>
+          <td class="data-text-cell">{{ r.booking.sample_name.display_name }}</td>
+          <td class="data-text-cell">{{ r.booking.customer.name|default:'-' }}</td>
+          <td class="data-text-cell">{{ r.remark_text|default:'-'|truncatechars:120 }}</td>
           <td>
             {% if r.final_outcome == 'pass' %}
             <span class="badge text-bg-success">Pass</span>
@@ -89,7 +89,7 @@
             <span class="badge text-bg-secondary">Draft</span>
             {% endif %}
           </td>
-          <td>{{ r.updated_by_display }}</td>
+          <td class="data-text-cell">{{ r.updated_by_display }}</td>
           <td>
             <div class="d-flex flex-wrap gap-2">
               <a class="btn btn-sm btn-outline-primary" href="{% url 'reports:coa_print' r.pk %}?autoprint=1" target="_blank" rel="noopener">COA</a>

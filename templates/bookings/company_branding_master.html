@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Company Name &amp; Logo | LIMS{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7 col-xl-6">
+    <div class="mb-3">
+      <h1 class="h3 mb-1">Company Name &amp; Logo</h1>
+      <p class="text-muted mb-0">Update the branding shown in the application header.</p>
+    </div>
+    <form method="post" enctype="multipart/form-data" class="card card-body shadow-sm">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.legal_name.id_for_label }}">{{ form.legal_name.label }}</label>
+        {{ form.legal_name }}
+        {% if form.legal_name.help_text %}<div class="form-text">{{ form.legal_name.help_text }}</div>{% endif %}
+        {% if form.legal_name.errors %}<div class="text-danger small">{{ form.legal_name.errors }}</div>{% endif %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="{{ form.logo.id_for_label }}">{{ form.logo.label }}</label>
+        {% if form.instance.logo %}<div class="mb-2"><img src="{{ form.instance.logo.url }}" alt="Current company logo" style="max-width:180px;max-height:90px;object-fit:contain"></div>{% endif %}
+        {{ form.logo }}
+        {% if form.logo.help_text %}<div class="form-text">{{ form.logo.help_text }}</div>{% endif %}
+        {% if form.logo.errors %}<div class="text-danger small">{{ form.logo.errors }}</div>{% endif %}
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary">Save Branding</button>
+        <a class="btn btn-outline-secondary" href="{% url 'dashboard' %}">Back to Dashboard</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

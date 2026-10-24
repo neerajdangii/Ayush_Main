@@ -2,9 +2,14 @@
 {% load static report_extras %}
 {% block title %}Dashboard | LIMS{% endblock %}
 {% block content %}
-<div class="row g-3 mb-3">
+<div class="dashboard-heading mb-3">
+  <div>
+    <h1 class="mb-1">Dashboard</h1>
+  </div>
+</div>
+<div class="row g-3 mb-3 dashboard-summary">
   <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--bookings">
       <div class="card-body">
         <h5 class="card-title">Bookings</h5>
         <p class="card-text mb-1">
@@ -19,7 +24,7 @@
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--create">
       <div class="card-body">
         <h5 class="card-title">Create Booking</h5>
         <p class="card-text">Create new sample booking entry.</p>
@@ -32,7 +37,7 @@
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--reports">
       <div class="card-body">
         <h5 class="card-title">Reports</h5>
         <p class="card-text">Total reports: {{ reports_total }}</p>
@@ -45,7 +50,7 @@
     </div>
   </div>
   <div class="col-md-3">
-    <div class="card h-100 shadow-sm">
+    <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--templates">
       <div class="card-body">
         <h5 class="card-title">Report Templates</h5>
         <p class="card-text">Saved result templates: {{ report_templates_total }}</p>
@@ -63,20 +68,20 @@
 <div class="row mb-3">
   {% if perms.bookings.view_data_sheet %}
   <div class="col-md-3">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--data-sheet">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">Data Sheet</h6>
-        <a class="btn btn-primary btn-sm" href="{% url 'bookings:data_sheet' %}">Open Data Sheet</a>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'bookings:data_sheet' %}">Open Data Sheet</a>
       </div>
     </div>
   </div>
   {% endif %}
   {% if perms.bookings.view_booking_change_audit %}
   <div class="col-md-3">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--history">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">Changes History</h6>
-        <a class="btn btn-primary btn-sm" href="{% url 'reports:change_audit' %}">Open History</a>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:change_audit' %}">Open History</a>
       </div>
     </div>
   </div>
@@ -87,10 +92,10 @@
 {% if perms.bookings.view_salesinvoice %}
 <div class="row mb-3">
   <div class="col-md-3">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--invoice">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">Sales Invoice</h6>
-        <a class="btn btn-primary btn-sm" href="{% url 'bookings:sales_invoice_list' %}">Open Sales Invoice</a>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'bookings:sales_invoice_list' %}">Open Sales Invoice</a>
       </div>
     </div>
   </div>
@@ -100,7 +105,7 @@
 {% if perms.accounts.view_user_activity %}
 <div class="row mb-3">
   <div class="col-md-3">
-    <div class="card shadow-sm">
+    <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--activity">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">User Activity</h6>
         <a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:user_activity' %}">View Activity</a>
@@ -111,17 +116,17 @@
 {% endif %}
 
 {% if user.is_superuser or perms.accounts.manage_welcome_announcement %}
-<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">Welcome Announcement</h6><a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:welcome_announcement' %}">Configure</a></div></div></div></div>
+<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--announcement"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">Welcome Announcement</h6><a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:welcome_announcement' %}">Configure</a></div></div></div></div>
 {% endif %}
 {% if user.is_superuser or perms.accounts.manage_system_settings %}
-<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">System Settings</h6><a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:system_settings' %}">Configure</a></div></div></div></div>
+<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--settings"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">System Settings</h6><a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:system_settings' %}">Configure</a></div></div></div></div>
 {% endif %}
 
 <div class="card shadow-sm">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">Master Store</h5>
   </div>
-  {% if user|has_any_role:"Admin,Manager,Analyst" or perms.reports.manage_letterheads %}
+  {% if user|has_any_role:"Admin,Manager,Analyst" or perms.reports.manage_letterheads or perms.bookings.manage_company_billing_settings %}
   <div class="card-body">
     <div class="row g-2">
       {% if user|has_any_role:"Admin,Manager,Analyst" %}
@@ -140,11 +145,25 @@
         </a>
       </div>
       {% endif %}
+      {% if user|has_any_role:"Admin" or perms.bookings.manage_company_billing_settings %}
+      <div class="col-md-4">
+        <a class="btn btn-outline-secondary w-100 d-flex justify-content-between" href="{% url 'bookings:branding_master' %}">
+          <span>Company Name &amp; Logo</span>
+          <span class="badge text-bg-light">Edit</span>
+        </a>
+      </div>
+      {% endif %}
       {% if perms.reports.manage_letterheads %}
       <div class="col-md-4">
         <a class="btn btn-outline-secondary w-100 d-flex justify-content-between" href="{% url 'reports:coa_letterhead' %}">
           <span>COA Letterhead</span>
           <span class="badge text-bg-light">Upload</span>
+        </a>
+      </div>
+      <div class="col-md-4">
+        <a class="btn btn-outline-secondary w-100 d-flex justify-content-between" href="{% url 'reports:verification_portal_master' %}">
+          <span>Report QR Verification Portal</span>
+          <span class="badge text-bg-light">Configure</span>
         </a>
       </div>
       <div class="col-md-4">

@@ -5,6 +5,7 @@ from html import unescape
 import logging
 from pathlib import Path
 import re
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -31,8 +32,9 @@ from bookings.models import Booking, ChangeAuditEntry, CustomerMaster, SalesInvo
 from bookings.change_audit import record_coa_edit
 from bookings.permissions import RoleRequiredMixin, has_role
 
-from .forms import COAEditForm, COALetterheadForm, ReportApprovalForm, ReportTemplateForm, TDSDocumentTemplateForm, TestLetterheadForm, _extract_uploaded_printable_content
-from .models import COALetterhead, Report, ReportRemark, ReportTemplate, TDSDocumentTemplate, TestLetterhead
+from .forms import COAEditForm, COALetterheadForm, ReportApprovalForm, ReportTemplateForm, ReportVerificationPortalForm, TDSDocumentTemplateForm, TestLetterheadForm, _extract_uploaded_printable_content
+from .models import COALetterhead, Report, ReportRemark, ReportTemplate, ReportVerificationPortal, TDSDocumentTemplate, TestLetterhead
+from .verification_portal import render_verification_layout
 
 
 PUBLIC_REPORT_ALLOWED_STATUSES = {
@@ -2167,6 +2169,8 @@ class PublicCOAPrintView(DetailView):
     context_object_name = "report"
 
     def get_object(self, queryset=None):
+        if not ReportVerificationPortal.current().public_report_enabled:
+            raise Http404
         return _get_public_report_or_404(self.kwargs["pk"])
 
     def get_context_data(self, **kwargs):
@@ -2180,6 +2184,56 @@ class PublicCOAPrintView(DetailView):
             is_test_report=q.get("doc") == "test",
         )
         context["is_letterhead"] = q.get("letterhead") == "1"
+        context["is_public_view"] = True
+        return context
+
+
+class PublicCOAVerificationView(DetailView):
+    model = Report
+    template_name = "reports/coa_verification_portal.html"
+    context_object_name = "report"
+
+    def get(self, request, *args, **kwargs):
+        portal = ReportVerificationPortal.current()
+        if not portal.verification_page_enabled:
+            if not portal.public_report_enabled:
+                raise Http404
+            query = {}
+            if request.GET.get("doc") == "test":
+                query["doc"] = "test"
+            if request.GET.get("plain") == "1":
+                query["plain"] = "1"
+            report_path = reverse("reports:coa_public_report", kwargs={"pk": kwargs["pk"]})
+            if query:
+                report_path = f"{report_path}?{urlencode(query)}"
+            return redirect(report_path)
+        return super().get(request, *args, **kwargs)
+
+    def get_object(self, queryset=None):
+        return _get_public_report_or_404(self.kwargs["pk"])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["portal"] = ReportVerificationPortal.current()
+        query = {}
+        if self.request.GET.get("doc") == "test":
+            query["doc"] = "test"
+        if self.request.GET.get("plain") == "1":
+            query["plain"] = "1"
+        report_path = reverse("reports:coa_public_report", kwargs={"pk": self.object.pk})
+        if query:
+            report_path = f"{report_path}?{urlencode(query)}"
+        context["public_report_url"] = self.request.build_absolute_uri(report_path)
+        context["custom_portal_layout"] = (
+            mark_safe(render_verification_layout(
+                context["portal"].layout_html,
+                self.object,
+                context["public_report_url"],
+                show_report=context["portal"].public_report_enabled,
+            ))
+            if context["portal"].layout_html
+            else ""
+        )
         return context
 
 
@@ -2351,6 +2405,25 @@ class TestLetterheadUpdateView(COALetterheadUpdateView):
         context["letterhead_title"] = "Test Letterhead"
         context["back_url"] = reverse("reports:template_list")
         return context
+
+
+class ReportVerificationPortalMasterView(PermissionRequiredMixin, FormView):
+    permission_required = "reports.manage_letterheads"
+    form_class = ReportVerificationPortalForm
+    template_name = "reports/verification_portal_master.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = ReportVerificationPortal.current()
+        return kwargs
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, "Report QR verification page settings saved.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard")
 
 
 class ReportTemplateContentView(PermissionRequiredMixin, RoleRequiredMixin, DetailView):

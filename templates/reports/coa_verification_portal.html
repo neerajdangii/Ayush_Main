@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ portal.title }} | Report Verification</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px 16px; background: {{ portal.page_background_color }}; color: #202633; font-family: Arial, sans-serif; }
+    .verification-card { width: min(100%, 620px); margin: 28px auto; padding: clamp(22px, 5vw, 42px); background: {{ portal.panel_background_color }}; border: 1px solid #dfe4eb; border-radius: 14px; box-shadow: 0 12px 35px rgba(25, 39, 63, .12); }
+    .verified-seal { position: relative; display: grid; width: 142px; height: 142px; margin: 0 auto 30px; place-items: center; border: 7px double {{ portal.accent_color }}; border-radius: 50%; color: {{ portal.accent_color }}; font-size: 17px; font-weight: 800; letter-spacing: .08em; text-align: center; }
+    .verified-seal::before, .verified-seal::after { position: absolute; left: 50%; width: 10px; height: 10px; content: ""; transform: translateX(-50%); background: {{ portal.accent_color }}; }
+    .verified-seal::before { top: 28px; }
+    .verified-seal::after { bottom: 28px; }
+    .verified-seal span { z-index: 1; padding: 8px 12px; border: 3px solid {{ portal.accent_color }}; background: {{ portal.panel_background_color }}; transform: rotate(-9deg); }
+    .verification-title { margin: 0; padding: 13px 16px; background: {{ portal.title_background_color }}; color: #172033; font-size: clamp(20px, 4vw, 28px); line-height: 1.25; text-align: center; }
+    .verification-details { width: 100%; border-collapse: collapse; font-size: 17px; }
+    .verification-details th, .verification-details td { width: 50%; padding: 13px 14px; border: 1px solid #515151; text-align: left; overflow-wrap: anywhere; }
+    .verification-details th { font-weight: 700; }
+    .verification-instruction { margin: 24px 0 32px; font-size: 17px; font-style: italic; font-weight: 700; line-height: 1.65; }
+    .verification-action { display: flex; justify-content: center; }
+    .verification-action a { display: inline-block; padding: 15px 30px; border-radius: 9px; background: {{ portal.button_color }}; color: {{ portal.button_text_color }}; font-size: 20px; font-weight: 600; text-align: center; text-decoration: none; transition: filter .16s ease, transform .16s ease, box-shadow .16s ease; }
+    .verification-action a:hover, .verification-action a:focus { filter: brightness(.94); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(25, 39, 63, .2); }
+    @media (max-width: 480px) { body { padding: 12px 8px; } .verification-card { margin: 10px auto; padding: 20px 16px; } .verification-details { font-size: 15px; } .verification-details th, .verification-details td { padding: 10px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  {% if custom_portal_layout %}
+    {{ custom_portal_layout }}
+  {% else %}
+  <main class="verification-card">
+    <div class="verified-seal" aria-label="{{ portal.verified_label }}"><span>{{ portal.verified_label }}</span></div>
+    <h1 class="verification-title">{{ portal.title }}</h1>
+    <table class="verification-details">
+      <tbody>
+        <tr><th scope="row">{{ portal.order_label }}</th><td>{{ report.booking.tracking_code }}</td></tr>
+        <tr><th scope="row">{{ portal.report_label }}</th><td>{{ report.certificate_no }}</td></tr>
+        <tr><th scope="row">{{ portal.customer_label }}</th><td>{{ report.booking.customer.name|default:"-" }}</td></tr>
+        <tr><th scope="row">{{ portal.sample_label }}</th><td>{{ report.booking.sample_name.display_name|default:"-" }}</td></tr>
+      </tbody>
+    </table>
+    <p class="verification-instruction">{{ portal.instruction }}</p>
+    {% if portal.public_report_enabled %}<div class="verification-action"><a href="{{ public_report_url }}">{{ portal.view_report_label }}</a></div>{% endif %}
+  </main>
+  {% endif %}
+</body>
+</html>

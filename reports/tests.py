@@ -10,6 +10,7 @@ from accounts.models import SystemSetting
 from bookings.models import Booking, SampleNameMaster
 
 from .models import TDSDocumentTemplate
+from .template_library import build_generic_result_table, build_tests_without_templates_table
 from .dependencies import CircuitBreaker, DependencyUnavailable
 from .views import _fill_tds_trf_row_value, _render_tds_content, _render_tds_source_file, _split_tds_rendered_pages
 
@@ -169,6 +170,22 @@ class TDSRenderingSafetyTests(SimpleTestCase):
 
         self.assertIn('class="coa-letterhead-image coa-letterhead-image--full"', rendered)
         self.assertNotIn("background-image:url(", rendered)
+
+
+class GenericReportTableEscapingTests(SimpleTestCase):
+    def test_generic_table_escapes_test_names(self):
+        rendered = build_generic_result_table(["<img src=x onerror=alert(1)>"])
+
+        self.assertIn("&lt;img src=x onerror=alert(1)&gt;", rendered)
+        self.assertNotIn("<img src=x", rendered)
+
+    def test_tests_without_templates_table_escapes_test_names(self):
+        rendered = build_tests_without_templates_table(
+            [SimpleNamespace(name="<script>alert(1)</script>")]
+        )
+
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", rendered)
+        self.assertNotIn("<script>", rendered)
 
 
 class CertificateNumberingTests(TestCase):

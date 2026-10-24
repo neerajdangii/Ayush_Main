@@ -6,6 +6,7 @@ import tempfile
 
 from django.conf import settings
 from django.core.files import File
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils.html import escape
 
@@ -160,6 +161,55 @@ class TestLetterhead(models.Model):
     @property
     def has_part_images(self):
         return bool(self.header_image or self.middle_image or self.footer_image)
+
+
+class ReportVerificationPortal(models.Model):
+    """Singleton presentation settings for public report QR verification pages."""
+
+    color_validator = RegexValidator(
+        regex=r"^#[0-9A-Fa-f]{6}$",
+        message="Enter a six-digit hex color such as #1473E6.",
+    )
+
+    verification_page_enabled = models.BooleanField(default=True)
+    public_report_enabled = models.BooleanField(default=True)
+    title = models.CharField(max_length=180, default="Test Certificate Authenticity Portal")
+    verified_label = models.CharField(max_length=40, default="VERIFIED")
+    order_label = models.CharField(max_length=80, default="Order No")
+    report_label = models.CharField(max_length=80, default="Report No")
+    customer_label = models.CharField(max_length=80, default="Customer Name")
+    sample_label = models.CharField(max_length=80, default="Sample Desc")
+    layout_html = models.TextField(
+        blank=True,
+        help_text="Optional custom layout. Use the listed placeholders for report data.",
+    )
+    instruction = models.TextField(
+        default="To verify the authenticity of your test certificate, please match the above information with the information printed on your test certificate."
+    )
+    view_report_label = models.CharField(max_length=60, default="View Report")
+    page_background_color = models.CharField(max_length=7, default="#F1F4F8", validators=[color_validator])
+    panel_background_color = models.CharField(max_length=7, default="#FFFFFF", validators=[color_validator])
+    title_background_color = models.CharField(max_length=7, default="#8DE98F", validators=[color_validator])
+    accent_color = models.CharField(max_length=7, default="#B51E24", validators=[color_validator])
+    button_color = models.CharField(max_length=7, default="#1673E8", validators=[color_validator])
+    button_text_color = models.CharField(max_length=7, default="#FFFFFF", validators=[color_validator])
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Report QR Verification Portal"
+        verbose_name_plural = "Report QR Verification Portal"
+        default_permissions = ()
+
+    def __str__(self):
+        return "Report QR Verification Portal"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def current(cls):
+        return cls.objects.filter(pk=1).first() or cls(pk=1)
 
 
 class TDSDocumentTemplate(models.Model):

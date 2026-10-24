@@ -9,7 +9,9 @@
 </div>
 {% endif %}
 <div class="no-print" style="text-align:center;margin-bottom:16px;display:flex;gap:12px;justify-content:center;">
+  {% if not is_public_view %}
   <a class="btn btn-warning" type="button" href="{% url 'reports:coa_edit' report.pk %}">Edit Report</a>
+  {% endif %}
   <button class="btn btn-primary" type="button" id="coa-print-btn">Print / Save PDF</button>
 </div>
 {% endblock %}

@@ -26,7 +26,7 @@ from .views import (
     PartyPendingExcelView,
     PartyPendingPrintView,
 )
-from .invoice_views import (CompanyBillingSettingsView, InvoiceCustomerMasterCreateView,
+from .invoice_views import (CompanyBillingSettingsView, CompanyBrandingMasterView, InvoiceCustomerMasterCreateView,
                             InvoiceCustomerMasterListView, InvoiceCustomerMasterUpdateView,
                             InvoiceBatchSampleLookupView, InvoicePrintTemplateMasterView,
                             SalesInvoiceCreateView, SalesInvoiceEditView, SalesInvoiceFinalizeView,
@@ -59,6 +59,7 @@ urlpatterns = [
     path("sales-invoices/<int:pk>/print/", SalesInvoicePrintView.as_view(), name="sales_invoice_print"),
     path("sales-invoices/<int:pk>/finalize/", SalesInvoiceFinalizeView.as_view(), name="sales_invoice_finalize"),
     path("invoice-settings/", CompanyBillingSettingsView.as_view(), name="invoice_settings"),
+    path("company-branding/", CompanyBrandingMasterView.as_view(), name="branding_master"),
     path("view/<int:pk>/", BookingDetailView.as_view(), name="detail"),
     path("<int:pk>/edit/", BookingUpdateView.as_view(), name="edit"),
     path("<int:pk>/delete/", BookingDeleteView.as_view(), name="delete"),

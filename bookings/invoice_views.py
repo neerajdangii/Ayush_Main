@@ -416,6 +416,18 @@ class CompanyBillingSettingsForm(forms.ModelForm):
         return value
 
 
+class CompanyBrandingForm(forms.ModelForm):
+    class Meta:
+        model = CompanyBillingSettings
+        fields = ("legal_name", "logo")
+        labels = {"legal_name": "Company name", "logo": "Company logo"}
+        help_texts = {
+            "legal_name": "This name appears in the application header.",
+            "logo": "This logo appears beside the company name in the application header.",
+        }
+        widgets = {"legal_name": forms.TextInput(attrs={"class": "form-control"})}
+
+
 class InvoiceCustomerMasterListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     permission_required = "bookings.manage_invoice_customers"
     model = InvoiceCustomerMaster
@@ -746,6 +758,11 @@ class SalesInvoiceCreateView(LoginRequiredMixin, PermissionRequiredMixin, FormVi
         ))
 
     def form_valid(self, form):
+        save_action = self.request.POST.get("save_action", "draft")
+        finalize_now = save_action == "finalize"
+        if finalize_now and not self.request.user.has_perm("bookings.finalize_salesinvoice"):
+            raise PermissionDenied
+
         buyer = form.cleaned_data["invoice_customer"]
         settings = CompanyBillingSettings.current()
         company_data = _new_invoice_company_snapshot(settings)
@@ -756,8 +773,6 @@ class SalesInvoiceCreateView(LoginRequiredMixin, PermissionRequiredMixin, FormVi
         buyer_data = buyer_form.save_to_snapshot({})
         buyer_data["note"] = buyer.note
         company_data = bank_form.save_to_snapshot(company_data)
-        save_action = self.request.POST.get("save_action", "draft")
-        finalize_now = save_action == "finalize"
         if finalize_now:
             if not company_data.get("gstin"):
                 form.add_error(None, "Company GSTIN is required to finalize the invoice.")
@@ -1089,6 +1104,28 @@ class CompanyBillingSettingsView(LoginRequiredMixin, PermissionRequiredMixin, Fo
         form.save()
         messages.success(self.request, "Invoice company settings saved. They apply to new invoices.")
         return redirect("bookings:sales_invoice_list")
+
+
+class CompanyBrandingMasterView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    permission_required = "bookings.manage_company_billing_settings"
+    form_class = CompanyBrandingForm
+    template_name = "bookings/company_branding_master.html"
+
+    def has_permission(self):
+        return (
+            super().has_permission()
+            or self.request.user.groups.filter(name="Admin").exists()
+        )
+
+    def get_object(self, queryset=None):
+        return CompanyBillingSettings.current()
+
+    def get_success_url(self):
+        return reverse("dashboard")
+
+    def form_valid(self, form):
+        messages.success(self.request, "Company name and logo updated.")
+        return super().form_valid(form)
 
 
 def _amount_words(amount):

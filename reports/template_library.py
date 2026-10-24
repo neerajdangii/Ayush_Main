@@ -219,7 +219,7 @@ def build_generic_result_table(test_names):
         names = ["Parameter Name"]
 
     rows = "\n".join(
-        GENERIC_RESULT_ROW_TEMPLATE.format(serial=index, test_name=name)
+        GENERIC_RESULT_ROW_TEMPLATE.format(serial=index, test_name=escape(name))
         for index, name in enumerate(names, start=1)
     )
     return GENERIC_RESULT_TABLE_TEMPLATE.format(rows=rows)
@@ -231,7 +231,7 @@ def build_tests_without_templates_table(tests):
         return ""
     
     rows = "\n".join(
-        GENERIC_RESULT_ROW_TEMPLATE.format(serial=index, test_name=test.name)
+        GENERIC_RESULT_ROW_TEMPLATE.format(serial=index, test_name=escape(test.name))
         for index, test in enumerate(tests, start=1)
     )
     return GENERIC_RESULT_TABLE_TEMPLATE.format(rows=rows)

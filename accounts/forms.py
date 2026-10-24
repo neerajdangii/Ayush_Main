@@ -77,7 +77,11 @@ DELEGATED_PERMISSION_FIELDS = {
     "can_view_booking_change_audit": [("bookings", "view_booking_change_audit")],
     "can_manage_invoice_customers": [("bookings", "manage_invoice_customers")],
     "can_view_user_activity": [("accounts", "view_user_activity")],
-    "can_manage_billing": [("bookings", "view_billingrecord")],
+    "can_manage_billing": [
+        ("bookings", "add_billingrecord"),
+        ("bookings", "delete_billingrecord"),
+        ("bookings", "view_billingrecord"),
+    ],
     "can_manage_welcome_announcement": [("accounts", "manage_welcome_announcement")],
     "can_manage_system_settings": [("accounts", "manage_system_settings")],
     "can_edit_tinymce_source": [("accounts", "edit_tinymce_source")],

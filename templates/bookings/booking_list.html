@@ -75,16 +75,16 @@
           {% for b in bookings %}
           <tr>
             <td class="text-center">{% if perms.bookings.delete_booking %}<input class="form-check-input booking-select" type="checkbox" name="booking_ids" value="{{ b.pk }}" aria-label="Select booking {{ b.tracking_code }}">{% endif %}</td>
-            <td>
+            <td class="data-text-cell">
               {{ b.sample_registration_no }}
               {% if b.batch_no %}
               <div class="text-muted small">Batch: {{ b.batch_no }}</div>
               {% endif %}
             </td>
-            <td>{{ b.certificate_no }}</td>
-            <td><span class="tracking-chip{% if perms.bookings.view_booking_change_audit and b.has_audit_changes %} change-audit-highlight{% endif %}"{% if perms.bookings.view_booking_change_audit and b.has_audit_changes %} title="This booking has recorded changes"{% endif %}>{{ b.tracking_code }}</span></td>
+            <td class="data-text-cell">{{ b.certificate_no }}</td>
+            <td class="data-text-cell"><span class="tracking-chip{% if perms.bookings.view_booking_change_audit and b.has_audit_changes %} change-audit-highlight{% endif %}"{% if perms.bookings.view_booking_change_audit and b.has_audit_changes %} title="This booking has recorded changes"{% endif %}>{{ b.tracking_code }}</span></td>
             <td>{{ b.booking_date|date:"d/m/Y" }}</td>
-            <td>
+            <td class="data-text-cell">
               {% with full_name=b.created_by.get_full_name %}
                 {% if full_name %}
                   {{ full_name }}
@@ -93,8 +93,8 @@
                 {% endif %}
               {% endwith %}
             </td>
-            <td>{{ b.customer.name }}</td>
-            <td>{{ b.sample_name.display_name }}</td>
+            <td class="data-text-cell">{{ b.customer.name }}</td>
+            <td class="data-text-cell">{{ b.sample_name.display_name }}</td>
             <td>{{ b.get_booking_type_display }}</td>
             <td>
               {% if b.is_reported_for_list %}
@@ -104,7 +104,7 @@
               {% else %}
               <span class="badge text-bg-warning">Pending</span>
               {% endif %}
-              <div class="text-muted small">Changed by: {{ b.updated_by_display }}</div>
+              <div class="text-muted small data-text-cell">Changed by: {{ b.updated_by_display }}</div>
             </td>
             <td>
               <a class="btn btn-sm btn-outline-dark" href="{% url 'bookings:detail' b.pk %}">View</a>

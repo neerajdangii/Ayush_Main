@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from .models import COALetterhead, Report, ReportRemark, ReportTemplate, TDSDocumentTemplate, TestLetterhead
+from .models import COALetterhead, Report, ReportRemark, ReportTemplate, ReportVerificationPortal, TDSDocumentTemplate, TestLetterhead
 from .template_library import build_generic_result_table, populate_main_table_rows
 
 DATE_FORMAT_DMY = "%d/%m/%Y"
@@ -549,6 +549,33 @@ class COALetterheadForm(forms.ModelForm):
 class TestLetterheadForm(COALetterheadForm):
     class Meta(COALetterheadForm.Meta):
         model = TestLetterhead
+
+
+class ReportVerificationPortalForm(forms.ModelForm):
+    DEFAULT_LAYOUT = """<div style=\"max-width:620px;margin:24px auto;padding:28px;border:1px solid #dfe4eb;border-radius:14px;background:#fff;font-family:Arial,sans-serif;color:#202633\">
+<h1 style=\"padding:14px;background:#8de98f;text-align:center\">Test Certificate Authenticity Portal</h1>
+<table style=\"width:100%;border-collapse:collapse\" border=\"1\"><tbody>
+<tr><th style=\"padding:10px;text-align:left\">Order No</th><td style=\"padding:10px\">{{ORDER_CODE}}</td></tr>
+<tr><th style=\"padding:10px;text-align:left\">Report No</th><td style=\"padding:10px\">{{REPORT_NUMBER}}</td></tr>
+<tr><th style=\"padding:10px;text-align:left\">Customer Name</th><td style=\"padding:10px\">{{CUSTOMER_NAME}}</td></tr>
+<tr><th style=\"padding:10px;text-align:left\">Sample Desc</th><td style=\"padding:10px\">{{SAMPLE_NAME}}</td></tr>
+</tbody></table><p><em>To verify the authenticity of your test certificate, please match the above information with the information printed on your test certificate.</em></p>
+<p style=\"text-align:center\"><a href=\"{{VIEW_REPORT_URL}}\" style=\"display:inline-block;padding:14px 28px;border-radius:8px;background:#1673e8;color:#fff;text-decoration:none\">View Report</a></p></div>"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.is_bound and not self.instance.layout_html:
+            self.initial["layout_html"] = self.DEFAULT_LAYOUT
+        self.fields["layout_html"].label = "Portal layout"
+
+    class Meta:
+        model = ReportVerificationPortal
+        fields = ["layout_html", "verification_page_enabled", "public_report_enabled"]
+        widgets = {
+            "layout_html": forms.Textarea(attrs={"class": "form-control", "rows": 18, "data-editor": "tinymce"}),
+            "verification_page_enabled": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "public_report_enabled": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
 
 
 class TDSDocumentTemplateForm(forms.ModelForm):

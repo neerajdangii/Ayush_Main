@@ -702,7 +702,8 @@ class BookingUpdateView(RoleRequiredMixin, PermissionRequiredMixin, UpdateView):
         return f"{reverse('bookings:list')}?saved=1&booking_id={self.object.tracking_code}"
 
 
-class BookingListView(LoginRequiredMixin, ListView):
+class BookingListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    permission_required = "bookings.view_booking"
     model = Booking
     template_name = "bookings/booking_list.html"
     context_object_name = "bookings"
@@ -771,7 +772,8 @@ class BookingListView(LoginRequiredMixin, ListView):
         return context
 
 
-class BookingDetailView(LoginRequiredMixin, DetailView):
+class BookingDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
+    permission_required = "bookings.view_booking"
     model = Booking
     template_name = "bookings/booking_detail.html"
     context_object_name = "booking"
@@ -1116,8 +1118,9 @@ class InlineMasterCreateView(RoleRequiredMixin, View):
         )
 
 
-class GetSimilarBookingDataView(LoginRequiredMixin, View):
+class GetSimilarBookingDataView(LoginRequiredMixin, PermissionRequiredMixin, View):
     """Fetch previous booking data for matching sample_name and customer."""
+    permission_required = "bookings.view_booking"
     
     def get(self, request):
         sample_name_id = request.GET.get("sample_name_id")

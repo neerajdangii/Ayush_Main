@@ -34,7 +34,7 @@
     .invoice-screen-page:last-child{break-after:auto;page-break-after:auto}
   }
 </style></head><body>
-<nav class="print-toolbar"><a href="{% url 'bookings:sales_invoice_list' %}">Back to Sales Invoices</a>{% if not template_error %}<button type="button" onclick="window.print()">Print / Save PDF</button>{% endif %}<span>{{ invoice.invoice_number|default:"Draft" }}</span></nav>
+<nav class="print-toolbar"><a href="{% url 'bookings:sales_invoice_list' %}">Back to Sales Invoices</a><span>{{ invoice.invoice_number|default:"Draft" }}</span></nav>
 {% if not template_error %}<div id="invoice-screen-pages" aria-label="Invoice A4 page preview"></div>{% endif %}
 <main id="invoice-print-source" class="invoice-paper">{% if template_error %}<div style="margin:16px;padding:16px;border:1px solid #c00;color:#900"><strong>The saved invoice template has an error:</strong> {{ template_error }}</div>{% else %}<table class="invoice-print-layout"><thead><tr><td>{{ rendered_header }}</td></tr></thead><tbody><tr><td>{{ rendered_invoice }}</td></tr></tbody></table>{% endif %}</main>
 {% if not template_error %}<script>
