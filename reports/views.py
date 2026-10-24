@@ -28,7 +28,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, FormView, L
 from django.utils.decorators import method_decorator
 
 from accounts.models import SystemSetting
-from bookings.models import Booking, ChangeAuditEntry, CustomerMaster, SalesInvoiceLine
+from bookings.models import Booking, ChangeAuditEntry, CompanyBillingSettings, CustomerMaster, SalesInvoiceLine
 from bookings.change_audit import record_coa_edit
 from bookings.permissions import RoleRequiredMixin, has_role
 
@@ -2224,12 +2224,15 @@ class PublicCOAVerificationView(DetailView):
         if query:
             report_path = f"{report_path}?{urlencode(query)}"
         context["public_report_url"] = self.request.build_absolute_uri(report_path)
+        company_settings = CompanyBillingSettings.objects.filter(pk=1).only("logo").first()
+        context["company_logo_url"] = company_settings.logo.url if company_settings and company_settings.logo else ""
         context["custom_portal_layout"] = (
             mark_safe(render_verification_layout(
                 context["portal"].layout_html,
                 self.object,
                 context["public_report_url"],
                 show_report=context["portal"].public_report_enabled,
+                logo_url=context["company_logo_url"],
             ))
             if context["portal"].layout_html
             else ""

@@ -105,7 +105,7 @@ class _LayoutSanitizer(HTMLParser):
         return "".join(self.parts)
 
 
-def render_verification_layout(layout_html, report, report_url, *, show_report=True):
+def render_verification_layout(layout_html, report, report_url, *, show_report=True, logo_url=""):
     """Sanitize the layout and replace only supported, escaped report tokens."""
     if not show_report:
         layout_html = re.sub(
@@ -122,10 +122,40 @@ def render_verification_layout(layout_html, report, report_url, *, show_report=T
     values = {
         "ORDER_CODE": booking.tracking_code,
         "REPORT_NUMBER": report.certificate_no,
+        "BATCH_NO": booking.batch_no or "-",
         "CUSTOMER_NAME": booking.customer.name if booking.customer_id else "-",
         "SAMPLE_NAME": booking.sample_name.display_name if booking.sample_name_id else "-",
     }
     for token, value in values.items():
         rendered = rendered.replace("{{" + token + "}}", escape(str(value or "")))
+    # Accept common Django-style field paths as aliases so existing layouts
+    # that used those spellings display the booking values as expected.
+    aliases = {
+        "{{booking.batch_no}}": values["BATCH_NO"],
+        "{{ booking.batch_no }}": values["BATCH_NO"],
+        "{{report.booking.batch_no}}": values["BATCH_NO"],
+        "{{ report.booking.batch_no }}": values["BATCH_NO"],
+        "{{booking.certificate_no}}": values["REPORT_NUMBER"],
+        "{{ booking.certificate_no }}": values["REPORT_NUMBER"],
+        "{{report.certificate_no}}": values["REPORT_NUMBER"],
+        "{{ report.certificate_no }}": values["REPORT_NUMBER"],
+        "{{booking.customer.name}}": values["CUSTOMER_NAME"],
+        "{{ booking.customer.name }}": values["CUSTOMER_NAME"],
+        "{{booking.sample_name}}": values["SAMPLE_NAME"],
+        "{{ booking.sample_name }}": values["SAMPLE_NAME"],
+    }
+    for token, value in aliases.items():
+        rendered = rendered.replace(token, escape(str(value or "")))
     rendered = rendered.replace("{{VIEW_REPORT_URL}}", escape(report_url, quote=True))
+    if logo_url:
+        logo_html = (
+            f'<img class="verification-company-logo" src="{escape(logo_url, quote=True)}" '
+            'alt="Company logo">'
+        )
+        if "{{COMPANY_LOGO}}" in rendered:
+            rendered = rendered.replace("{{COMPANY_LOGO}}", logo_html)
+        else:
+            rendered = logo_html + rendered
+    else:
+        rendered = rendered.replace("{{COMPANY_LOGO}}", "")
     return rendered

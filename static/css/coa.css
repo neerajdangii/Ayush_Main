@@ -852,6 +852,68 @@ body.coa-rendered-ok #coa-page-first {
   }
 }
 
+/* Public QR reports should read comfortably on a phone while retaining the
+   existing A4 page geometry used by print and the pagination script. */
+@media screen and (max-width: 640px) {
+  body.coa-public-view .coa-print-page {
+    width: calc(100vw - 12px);
+    margin: 6px auto;
+  }
+
+  body.coa-public-view .coa-meta-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    font-size: 10px;
+  }
+
+  body.coa-public-view .coa-meta-table colgroup col {
+    width: auto !important;
+  }
+
+  body.coa-public-view .coa-result,
+  body.coa-public-view .coa-result table {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  body.coa-public-view .coa-meta-table th,
+  body.coa-public-view .coa-meta-table td,
+  body.coa-public-view .coa-result th,
+  body.coa-public-view .coa-result td {
+    color: #172033 !important;
+    background-color: rgba(255, 255, 255, .94) !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  body.coa-public-view .coa-meta-table th *,
+  body.coa-public-view .coa-meta-table td *,
+  body.coa-public-view .coa-result th *,
+  body.coa-public-view .coa-result td * {
+    color: #172033 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  body.coa-public-view .coa-page-info,
+  body.coa-public-view .coa-cert,
+  body.coa-public-view .coa-section-title,
+  body.coa-public-view .coa-end-report,
+  body.coa-public-view .coa-remark {
+    color: #172033 !important;
+  }
+
+  body.coa-public-view .coa-result img,
+  body.coa-public-view .coa-result table img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+
 @media print {
   @page {
     size: A4;

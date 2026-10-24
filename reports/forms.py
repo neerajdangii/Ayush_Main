@@ -557,6 +557,7 @@ class ReportVerificationPortalForm(forms.ModelForm):
 <table style=\"width:100%;border-collapse:collapse\" border=\"1\"><tbody>
 <tr><th style=\"padding:10px;text-align:left\">Order No</th><td style=\"padding:10px\">{{ORDER_CODE}}</td></tr>
 <tr><th style=\"padding:10px;text-align:left\">Report No</th><td style=\"padding:10px\">{{REPORT_NUMBER}}</td></tr>
+<tr><th style=\"padding:10px;text-align:left\">Batch No</th><td style=\"padding:10px\">{{BATCH_NO}}</td></tr>
 <tr><th style=\"padding:10px;text-align:left\">Customer Name</th><td style=\"padding:10px\">{{CUSTOMER_NAME}}</td></tr>
 <tr><th style=\"padding:10px;text-align:left\">Sample Desc</th><td style=\"padding:10px\">{{SAMPLE_NAME}}</td></tr>
 </tbody></table><p><em>To verify the authenticity of your test certificate, please match the above information with the information printed on your test certificate.</em></p>

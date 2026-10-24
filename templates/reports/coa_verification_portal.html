@@ -21,6 +21,7 @@
     .verification-action { display: flex; justify-content: center; }
     .verification-action a { display: inline-block; padding: 15px 30px; border-radius: 9px; background: {{ portal.button_color }}; color: {{ portal.button_text_color }}; font-size: 20px; font-weight: 600; text-align: center; text-decoration: none; transition: filter .16s ease, transform .16s ease, box-shadow .16s ease; }
     .verification-action a:hover, .verification-action a:focus { filter: brightness(.94); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(25, 39, 63, .2); }
+    .verification-company-logo { display: block; width: auto; max-width: min(180px, 70%); max-height: 90px; padding: 6px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; object-fit: contain; margin: 0 auto 18px; }
     @media (max-width: 480px) { body { padding: 12px 8px; } .verification-card { margin: 10px auto; padding: 20px 16px; } .verification-details { font-size: 15px; } .verification-details th, .verification-details td { padding: 10px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
   </style>
@@ -30,12 +31,14 @@
     {{ custom_portal_layout }}
   {% else %}
   <main class="verification-card">
+    {% if company_logo_url %}<img class="verification-company-logo" src="{{ company_logo_url }}" alt="Company logo">{% endif %}
     <div class="verified-seal" aria-label="{{ portal.verified_label }}"><span>{{ portal.verified_label }}</span></div>
     <h1 class="verification-title">{{ portal.title }}</h1>
     <table class="verification-details">
       <tbody>
         <tr><th scope="row">{{ portal.order_label }}</th><td>{{ report.booking.tracking_code }}</td></tr>
         <tr><th scope="row">{{ portal.report_label }}</th><td>{{ report.certificate_no }}</td></tr>
+        <tr><th scope="row">Batch No</th><td>{{ report.booking.batch_no|default:"-" }}</td></tr>
         <tr><th scope="row">{{ portal.customer_label }}</th><td>{{ report.booking.customer.name|default:"-" }}</td></tr>
         <tr><th scope="row">{{ portal.sample_label }}</th><td>{{ report.booking.sample_name.display_name|default:"-" }}</td></tr>
       </tbody>
