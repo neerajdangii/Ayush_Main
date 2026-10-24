@@ -183,6 +183,7 @@ class ReportVerificationPortal(models.Model):
         blank=True,
         help_text="Optional custom layout. Use the listed placeholders for report data.",
     )
+    portal_logo = models.ImageField(upload_to="report_verification_portal/", blank=True, null=True)
     instruction = models.TextField(
         default="To verify the authenticity of your test certificate, please match the above information with the information printed on your test certificate."
     )

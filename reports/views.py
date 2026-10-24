@@ -12,6 +12,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef
 from django.db.models import Q
+from django.core.files.storage import default_storage
 from django.http import Http404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -26,9 +27,10 @@ from django.template import TemplateSyntaxError
 from django.utils.html import escape, strip_tags
 from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView, View
 from django.utils.decorators import method_decorator
+from PIL import Image
 
 from accounts.models import SystemSetting
-from bookings.models import Booking, ChangeAuditEntry, CompanyBillingSettings, CustomerMaster, SalesInvoiceLine
+from bookings.models import Booking, ChangeAuditEntry, CustomerMaster, SalesInvoiceLine
 from bookings.change_audit import record_coa_edit
 from bookings.permissions import RoleRequiredMixin, has_role
 
@@ -43,6 +45,27 @@ PUBLIC_REPORT_ALLOWED_STATUSES = {
 }
 
 logger = logging.getLogger(__name__)
+
+
+@require_http_methods(["POST"])
+def verification_portal_image_upload(request):
+    if not request.user.is_authenticated or not (
+        request.user.is_superuser or request.user.has_perm("reports.manage_letterheads")
+    ):
+        return JsonResponse({"error": "Permission denied."}, status=403)
+
+    uploaded = request.FILES.get("file")
+    if not uploaded or uploaded.size > 5 * 1024 * 1024:
+        return JsonResponse({"error": "Upload an image smaller than 5 MB."}, status=400)
+    try:
+        image = Image.open(uploaded)
+        image.verify()
+        uploaded.seek(0)
+    except Exception:
+        return JsonResponse({"error": "Upload a valid image file."}, status=400)
+
+    saved_name = default_storage.save(f"report_verification_portal/images/{Path(uploaded.name).name}", uploaded)
+    return JsonResponse({"location": default_storage.url(saved_name)})
 
 
 class _TDSSampleName:
@@ -2224,15 +2247,12 @@ class PublicCOAVerificationView(DetailView):
         if query:
             report_path = f"{report_path}?{urlencode(query)}"
         context["public_report_url"] = self.request.build_absolute_uri(report_path)
-        company_settings = CompanyBillingSettings.objects.filter(pk=1).only("logo").first()
-        context["company_logo_url"] = company_settings.logo.url if company_settings and company_settings.logo else ""
         context["custom_portal_layout"] = (
             mark_safe(render_verification_layout(
                 context["portal"].layout_html,
                 self.object,
                 context["public_report_url"],
                 show_report=context["portal"].public_report_enabled,
-                logo_url=context["company_logo_url"],
             ))
             if context["portal"].layout_html
             else ""

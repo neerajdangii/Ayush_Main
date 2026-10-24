@@ -63,10 +63,23 @@
         suffix: '.min', skin_url: window.arlTinyMceConfig.skinUrl,
         content_css: window.arlTinyMceConfig.contentCss,
         selector, height: 560, menubar: 'file edit view insert format table tools',
-        plugins: 'lists table link code advlist charmap preview',
-        toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline forecolor backcolor | alignleft aligncenter alignright | bullist numlist | table link | removeformat code preview',
+        plugins: 'lists table link image code advlist charmap preview',
+        toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline forecolor backcolor | alignleft aligncenter alignright | bullist numlist | table link image | removeformat code preview',
         table_default_attributes: { border: '1', style: 'border-collapse:collapse;width:100%;' },
-        table_responsive_width: true, branding: false, license_key: 'gpl'
+        table_responsive_width: true, branding: false, license_key: 'gpl',
+        images_upload_credentials: true,
+        images_upload_handler: (blobInfo) => new Promise((resolve, reject) => {
+          const formData = new FormData();
+          formData.append('file', blobInfo.blob(), blobInfo.filename());
+          fetch('{% url "reports:verification_portal_image_upload" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+          }).then((response) => response.json()).then((data) => {
+            if (data.location) resolve(data.location);
+            else reject(data.error || 'Image upload failed.');
+          }).catch(() => reject('Image upload failed.'));
+        })
       });
       const form = textarea.form;
       if (form && !form.dataset.editorSaveBound) {

@@ -190,6 +190,7 @@ class ReportVerificationPortalTests(TestCase):
         self.assertNotContains(response, "where report data or the report link should appear")
         self.assertNotContains(response, "Portal colors")
         self.assertNotContains(response, "Page background color")
+        self.assertNotContains(response, "Portal logo")
 
     def test_custom_layout_renders_data_and_report_link_safely(self):
         portal = ReportVerificationPortal.current()

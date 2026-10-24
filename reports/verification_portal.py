@@ -6,11 +6,11 @@ import re
 
 
 ALLOWED_TAGS = {
-    "a", "b", "blockquote", "br", "caption", "div", "em", "h1", "h2", "h3",
+    "a", "b", "blockquote", "br", "caption", "div", "em", "h1", "h2", "h3", "img",
     "h4", "h5", "h6", "hr", "i", "li", "ol", "p", "span", "strong", "table",
     "tbody", "td", "th", "thead", "tr", "u", "ul",
 }
-VOID_TAGS = {"br", "hr"}
+VOID_TAGS = {"br", "hr", "img"}
 ALLOWED_STYLE_PROPERTIES = {
     "background-color", "border", "border-collapse", "border-color", "border-radius",
     "border-style", "border-width", "color", "font-size", "font-style", "font-weight",
@@ -63,6 +63,14 @@ class _LayoutSanitizer(HTMLParser):
                 safe_attrs.append(f' class="{escape(value, quote=True)}"')
             elif tag in {"td", "th"} and name in {"colspan", "rowspan"} and value.isdigit():
                 safe_attrs.append(f' {name}="{value}"')
+            elif tag == "img" and name == "src" and (
+                value.startswith("/media/") or value.startswith("/static/") or value.startswith("https://")
+            ):
+                safe_attrs.append(f' src="{escape(value, quote=True)}"')
+            elif tag == "img" and name == "alt":
+                safe_attrs.append(f' alt="{escape(value, quote=True)}"')
+            elif tag == "img" and name in {"width", "height"} and value.isdigit():
+                safe_attrs.append(f' {name}="{value}"')
             elif tag == "a" and name == "href" and (
                 value.strip().lower().startswith(("https://", "http://", "mailto:"))
                 or value.strip() == "{{VIEW_REPORT_URL}}"
@@ -105,7 +113,7 @@ class _LayoutSanitizer(HTMLParser):
         return "".join(self.parts)
 
 
-def render_verification_layout(layout_html, report, report_url, *, show_report=True, logo_url=""):
+def render_verification_layout(layout_html, report, report_url, *, show_report=True):
     """Sanitize the layout and replace only supported, escaped report tokens."""
     if not show_report:
         layout_html = re.sub(
@@ -147,13 +155,4 @@ def render_verification_layout(layout_html, report, report_url, *, show_report=T
     for token, value in aliases.items():
         rendered = rendered.replace(token, escape(str(value or "")))
     rendered = rendered.replace("{{VIEW_REPORT_URL}}", escape(report_url, quote=True))
-    if logo_url:
-        logo_html = (
-            f'<img class="verification-company-logo" src="{escape(logo_url, quote=True)}" '
-            'alt="Company logo">'
-        )
-        if "{{COMPANY_LOGO}}" in rendered:
-            rendered = rendered.replace("{{COMPANY_LOGO}}", logo_html)
-    else:
-        rendered = rendered.replace("{{COMPANY_LOGO}}", "")
     return rendered
