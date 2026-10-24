@@ -67,24 +67,50 @@
         toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline forecolor backcolor | alignleft aligncenter alignright | bullist numlist | table link image | removeformat code preview',
         table_default_attributes: { border: '1', style: 'border-collapse:collapse;width:100%;' },
         table_responsive_width: true, branding: false, license_key: 'gpl',
+        paste_data_images: true,
+        automatic_uploads: true,
+        convert_urls: false,
         images_upload_credentials: true,
         images_upload_handler: (blobInfo) => new Promise((resolve, reject) => {
           const formData = new FormData();
           formData.append('file', blobInfo.blob(), blobInfo.filename());
           fetch('{% url "reports:verification_portal_image_upload" %}', {
             method: 'POST',
-            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            headers: { 'X-CSRFToken': textarea.form.querySelector('[name=csrfmiddlewaretoken]').value },
             body: formData
-          }).then((response) => response.json()).then((data) => {
+          }).then(async (response) => {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Image upload failed.');
+            return data;
+          }).then((data) => {
             if (data.location) resolve(data.location);
             else reject(data.error || 'Image upload failed.');
-          }).catch(() => reject('Image upload failed.'));
+          }).catch((error) => reject(error.message || 'Image upload failed.'));
         })
       });
       const form = textarea.form;
       if (form && !form.dataset.editorSaveBound) {
         form.dataset.editorSaveBound = '1';
-        form.addEventListener('submit', function () { window.tinymce.triggerSave(); });
+        form.addEventListener('submit', function (event) {
+          if (form.dataset.portalImagesReady === '1') {
+            delete form.dataset.portalImagesReady;
+            window.tinymce.triggerSave();
+            return;
+          }
+          const editor = window.tinymce.get(textarea.id);
+          if (!editor || typeof editor.uploadImages !== 'function') {
+            window.tinymce.triggerSave();
+            return;
+          }
+          event.preventDefault();
+          editor.uploadImages().then(function () {
+            window.tinymce.triggerSave();
+            form.dataset.portalImagesReady = '1';
+            form.requestSubmit();
+          }).catch(function () {
+            window.alert('An image could not be uploaded. Please remove it or try again.');
+          });
+        });
       }
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
