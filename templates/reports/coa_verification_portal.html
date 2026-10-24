@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
   <title>{{ portal.title }} | Report Verification</title>
   <style>
+    :root { color-scheme: light; }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 28px 16px; background: {{ portal.page_background_color }}; color: #202633; font-family: Arial, sans-serif; }
     .verification-card { width: min(100%, 620px); margin: 28px auto; padding: clamp(22px, 5vw, 42px); background: {{ portal.panel_background_color }}; border: 1px solid #dfe4eb; border-radius: 14px; box-shadow: 0 12px 35px rgba(25, 39, 63, .12); }
@@ -31,7 +33,6 @@
     {{ custom_portal_layout }}
   {% else %}
   <main class="verification-card">
-    {% if company_logo_url %}<img class="verification-company-logo" src="{{ company_logo_url }}" alt="Company logo">{% endif %}
     <div class="verified-seal" aria-label="{{ portal.verified_label }}"><span>{{ portal.verified_label }}</span></div>
     <h1 class="verification-title">{{ portal.title }}</h1>
     <table class="verification-details">

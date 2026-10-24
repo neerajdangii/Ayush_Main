@@ -154,8 +154,6 @@ def render_verification_layout(layout_html, report, report_url, *, show_report=T
         )
         if "{{COMPANY_LOGO}}" in rendered:
             rendered = rendered.replace("{{COMPANY_LOGO}}", logo_html)
-        else:
-            rendered = logo_html + rendered
     else:
         rendered = rendered.replace("{{COMPANY_LOGO}}", "")
     return rendered
