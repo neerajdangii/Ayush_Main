@@ -2,14 +2,11 @@
 {% load static report_extras %}
 {% block title %}Dashboard | LIMS{% endblock %}
 {% block content %}
-<div class="dashboard-heading mb-3">
-  <div>
-    <h1 class="mb-1">Dashboard</h1>
-  </div>
-</div>
-<div class="row g-3 mb-3 dashboard-summary">
+<div class="row g-3 mb-3 dashboard-summary cards">
   <div class="col-md-3">
     <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--bookings">
+      <span class="dashboard-card-blob" aria-hidden="true"></span>
+      <span class="dashboard-card-glass" aria-hidden="true"></span>
       <div class="card-body">
         <h5 class="card-title">Bookings</h5>
         <p class="card-text mb-1">
@@ -25,6 +22,8 @@
   </div>
   <div class="col-md-3">
     <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--create">
+      <span class="dashboard-card-blob" aria-hidden="true"></span>
+      <span class="dashboard-card-glass" aria-hidden="true"></span>
       <div class="card-body">
         <h5 class="card-title">Create Booking</h5>
         <p class="card-text">Create new sample booking entry.</p>
@@ -38,6 +37,8 @@
   </div>
   <div class="col-md-3">
     <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--reports">
+      <span class="dashboard-card-blob" aria-hidden="true"></span>
+      <span class="dashboard-card-glass" aria-hidden="true"></span>
       <div class="card-body">
         <h5 class="card-title">Reports</h5>
         <p class="card-text">Total reports: {{ reports_total }}</p>
@@ -49,43 +50,31 @@
       </div>
     </div>
   </div>
+  {% if user.is_superuser or perms.reports.view_report and user|has_any_role:"Manager,Incharge,Analyst,Admin" %}
   <div class="col-md-3">
-    <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--templates">
+    <div class="card h-100 shadow-sm dashboard-summary-card dashboard-summary-card--data-sheet">
+      <span class="dashboard-card-blob" aria-hidden="true"></span>
+      <span class="dashboard-card-glass" aria-hidden="true"></span>
       <div class="card-body">
-        <h5 class="card-title">Report Templates</h5>
-        <p class="card-text">Saved result templates: {{ report_templates_total }}</p>
-        {% if user|has_any_role:"Admin,Manager,Analyst" %}
-        <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:template_list' %}">Open Templates</a>
-        {% else %}
-        <button class="btn btn-secondary btn-sm" type="button" disabled>Open Templates</button>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-</div>
-
-{% if perms.bookings.view_data_sheet or perms.bookings.view_booking_change_audit %}
-<div class="row mb-3">
-  {% if perms.bookings.view_data_sheet %}
-  <div class="col-md-3">
-    <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--data-sheet">
-      <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <h6 class="mb-0">Data Sheet</h6>
-        <a class="btn btn-outline-primary btn-sm" href="{% url 'bookings:data_sheet' %}">Open Data Sheet</a>
+        <h5 class="card-title">Report Release</h5>
+        <p class="card-text">View and manage released reports.</p>
+        <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:release_list' %}">Open Releases</a>
       </div>
     </div>
   </div>
   {% endif %}
-  {% if perms.bookings.view_booking_change_audit %}
+</div>
+
+{% if perms.bookings.view_booking_change_audit %}
+<div class="row mb-3">
   <div class="col-md-3">
     <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--history">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">Changes History</h6>
-        <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:change_audit' %}">Open History</a>
+        <a class="btn animated-button" href="{% url 'reports:change_audit' %}"><svg class="arr-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><svg class="arr-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><span class="circle" aria-hidden="true"></span><span class="text">Open History</span></a>
       </div>
     </div>
   </div>
-  {% endif %}
 </div>
 {% endif %}
 
@@ -95,7 +84,20 @@
     <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--invoice">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">Sales Invoice</h6>
-        <a class="btn btn-outline-primary btn-sm" href="{% url 'bookings:sales_invoice_list' %}">Open Sales Invoice</a>
+        <a class="btn animated-button" href="{% url 'bookings:sales_invoice_list' %}"><svg class="arr-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><svg class="arr-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><span class="circle" aria-hidden="true"></span><span class="text">Open Sales Invoice</span></a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if perms.bookings.view_data_sheet %}
+<div class="row mb-3">
+  <div class="col-md-3">
+    <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--release">
+      <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <h6 class="mb-0">Data Sheet</h6>
+        <a class="btn animated-button" href="{% url 'bookings:data_sheet' %}"><svg class="arr-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><svg class="arr-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><span class="circle" aria-hidden="true"></span><span class="text">Open Data Sheet</span></a>
       </div>
     </div>
   </div>
@@ -108,7 +110,7 @@
     <div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--activity">
       <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h6 class="mb-0">User Activity</h6>
-        <a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:user_activity' %}">View Activity</a>
+        <a class="btn animated-button" href="{% url 'accounts:user_activity' %}"><svg class="arr-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><svg class="arr-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><span class="circle" aria-hidden="true"></span><span class="text">View Activity</span></a>
       </div>
     </div>
   </div>
@@ -116,10 +118,10 @@
 {% endif %}
 
 {% if user.is_superuser or perms.accounts.manage_welcome_announcement %}
-<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--announcement"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">Welcome Announcement</h6><a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:welcome_announcement' %}">Configure</a></div></div></div></div>
+<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--announcement"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">Welcome Announcement</h6><a class="btn animated-button" href="{% url 'accounts:welcome_announcement' %}"><svg class="arr-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><svg class="arr-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><span class="circle" aria-hidden="true"></span><span class="text">Configure</span></a></div></div></div></div>
 {% endif %}
 {% if user.is_superuser or perms.accounts.manage_system_settings %}
-<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--settings"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">System Settings</h6><a class="btn btn-outline-primary btn-sm" href="{% url 'accounts:system_settings' %}">Configure</a></div></div></div></div>
+<div class="row mb-3"><div class="col-md-3"><div class="card shadow-sm dashboard-shortcut-card dashboard-shortcut-card--settings"><div class="card-body py-2 d-flex justify-content-between align-items-center"><h6 class="mb-0">System Settings</h6><a class="btn animated-button" href="{% url 'accounts:system_settings' %}"><svg class="arr-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><svg class="arr-2" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h13.17l-5.59-5.59L12 4l8 8-8 8-1.41-1.41L16.17 13H3z"/></svg><span class="circle" aria-hidden="true"></span><span class="text">Configure</span></a></div></div></div></div>
 {% endif %}
 
 <div class="card shadow-sm">
@@ -144,6 +146,14 @@
           <span class="badge text-bg-light">{{ tds_templates_total }}</span>
         </a>
       </div>
+      {% if perms.reports.view_reporttemplate %}
+      <div class="col-md-4">
+        <a class="btn btn-outline-secondary w-100 d-flex justify-content-between" href="{% url 'reports:template_list' %}">
+          <span>Report Templates</span>
+          <span class="badge text-bg-light">{{ report_templates_total }}</span>
+        </a>
+      </div>
+      {% endif %}
       {% endif %}
       {% if user|has_any_role:"Admin" or perms.bookings.manage_company_billing_settings %}
       <div class="col-md-4">

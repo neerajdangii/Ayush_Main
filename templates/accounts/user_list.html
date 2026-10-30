@@ -7,7 +7,7 @@
     <h5 class="mb-0">Users</h5>
     <div class="d-flex gap-2">
       {% if request.user.is_superuser or user|has_any_role:"Admin,Manager" %}
-      <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:create_user' %}">New User</a>
+      {% include "partials/animated_button.html" with url_name="accounts:create_user" label="New User" %}
       {% endif %}
     </div>
   </div>
@@ -75,7 +75,7 @@
                 <a class="btn btn-sm btn-outline-primary" href="{% url 'accounts:user_edit' u.pk %}">Edit</a>
                 {% endif %}
                 {% if request.user.is_superuser and not u.is_superuser and request.user.pk != u.pk %}
-                <a class="btn btn-sm btn-outline-danger" href="{% url 'accounts:user_delete' u.pk %}">Delete</a>
+                <a class="btn btn-sm btn-outline-danger delete-action-button delete-action-button--compact" href="{% url 'accounts:user_delete' u.pk %}">Delete</a>
                 {% endif %}
               </div>
             </td>
@@ -94,7 +94,7 @@
       <ul class="pagination">
         {% if page_obj.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}">Previous</a>
+          <a class="page-link pagination-previous-button" href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}">Previous</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">Previous</span></li>
@@ -104,7 +104,7 @@
 
         {% if page_obj.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}">Next</a>
+          <a class="page-link pagination-next-button" href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q|urlencode }}{% endif %}">Next</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">Next</span></li>

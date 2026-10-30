@@ -53,9 +53,8 @@
         {% if form.content.errors %}<div class="text-danger small mt-1">{{ form.content.errors }}</div>{% endif %}
       </div>
       <div class="col-md-4 d-flex align-items-end">
-        <div class="form-check">
-          {{ form.is_active }}
-          <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+        <div>
+          {% include "partials/active_toggle.html" with field=form.is_active label="Active" %}
         </div>
       </div>
       <div class="col-md-4 d-flex align-items-end">

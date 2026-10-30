@@ -2,13 +2,17 @@
 {% block title %}Edit User | LIMS{% endblock %}
 {% block content %}
 <div class="card shadow-sm">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">Edit User: {{ object.username }}</h5>
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'accounts:user_list' %}">Back</a>
-  </div>
-  <div class="card-body">
-    <form method="post" action="" class="row g-3" enctype="multipart/form-data">
-      {% csrf_token %}
+  <form method="post" action="" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="card-header user-edit-header">
+      <h5 class="mb-0">Edit User: {{ object.username }}</h5>
+      <div class="user-edit-header-actions">
+        {% include "partials/active_toggle.html" with field=form.is_active label="Active" %}
+        <a class="btn btn-sm btn-outline-secondary" href="{% url 'accounts:user_list' %}">Back</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
 
       {% if form.non_field_errors %}
       <div class="col-12">
@@ -53,11 +57,6 @@
         <label class="form-label" for="{{ form.new_password2.id_for_label }}">Confirm new password</label>
         {{ form.new_password2 }}
         {{ form.new_password2.errors }}
-      </div>
-
-      <div class="col-md-3 form-check mt-4 ms-3">
-        {{ form.is_active }}
-        <label class="form-check-label" for="id_is_active">Active</label>
       </div>
 
       {% if not form.is_staff.field.disabled %}
@@ -168,6 +167,12 @@
         <label class="form-check-label" for="id_can_manage_users">User Management</label>
       </div>
       {% endif %}
+      {% if not form.can_manage_report_releases.field.disabled %}
+      <div class="col-md-3 form-check mt-4 ms-3">
+        {{ form.can_manage_report_releases }}
+        <label class="form-check-label" for="id_can_manage_report_releases">Report Release Access</label>
+      </div>
+      {% endif %}
 
       {% if not form.can_assign_bookings.field.disabled %}
       <div class="col-md-3 form-check mt-4 ms-3">
@@ -218,10 +223,11 @@
         <button class="btn btn-primary" type="submit">Save Changes</button>
         <a class="btn btn-outline-secondary" href="{% url 'accounts:user_list' %}">Cancel</a>
         {% if not object.is_superuser and request.user.pk != object.pk %}
-        <a class="btn btn-outline-danger ms-auto" href="{% url 'accounts:user_delete' object.pk %}">Delete User</a>
+        <a class="btn btn-outline-danger delete-action-button ms-auto" href="{% url 'accounts:user_delete' object.pk %}">Delete User</a>
         {% endif %}
       </div>
-    </form>
-  </div>
+      </div>
+    </div>
+  </form>
 </div>
 {% endblock %}

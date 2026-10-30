@@ -8,7 +8,7 @@
 <div class="card shadow-sm">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">{{ title }}</h5>
-    <a href="{% url 'bookings:master_add' master_slug %}" class="btn btn-sm btn-primary">Add</a>
+    {% include "partials/animated_button.html" with url_name="bookings:master_add" url_arg=master_slug label="Add" %}
   </div>
   <div class="card-body">
     <div class="mb-3 d-flex gap-2 flex-wrap">
@@ -64,7 +64,7 @@
             <td>{{ row.created_at|date:'Y-m-d H:i'|default:'-' }}</td>
             <td>
               <a href="{% url 'bookings:master_edit' master_slug row.object.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
-              <a href="{% url 'bookings:master_delete' master_slug row.object.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+              <a href="{% url 'bookings:master_delete' master_slug row.object.pk %}" class="btn btn-sm btn-outline-danger delete-action-button delete-action-button--compact">Delete</a>
             </td>
           </tr>
           {% empty %}
@@ -83,7 +83,7 @@
           <a class="page-link" href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}page=1">First</a>
         </li>
         <li class="page-item">
-          <a class="page-link" href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+          <a class="page-link pagination-previous-button" href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
         </li>
         {% else %}
         <li class="page-item disabled">
@@ -108,7 +108,7 @@
 
         {% if page_obj.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+          <a class="page-link pagination-next-button" href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
         </li>
         <li class="page-item">
           <a class="page-link" href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Last</a>

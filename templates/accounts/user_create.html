@@ -161,6 +161,12 @@
         <label class="form-check-label" for="id_can_manage_users">User Management</label>
       </div>
       {% endif %}
+      {% if not form.can_manage_report_releases.field.disabled %}
+      <div class="col-md-3 form-check mt-4 ms-3">
+        {{ form.can_manage_report_releases }}
+        <label class="form-check-label" for="id_can_manage_report_releases">Report Release Access</label>
+      </div>
+      {% endif %}
 
       {% if not form.can_assign_bookings.field.disabled %}
       <div class="col-md-3 form-check mt-4 ms-3">

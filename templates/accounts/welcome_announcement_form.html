@@ -24,7 +24,7 @@
     <form method="post" enctype="multipart/form-data" id="announcement-form" class="row g-3">
       {% csrf_token %}
       <div class="col-md-6">{{ form.announcement_type.label_tag }}{{ form.announcement_type }}</div>
-      <div class="col-md-6 d-flex align-items-end"><div class="form-check">{{ form.is_active }} {{ form.is_active.label_tag }}</div></div>
+      <div class="col-md-6 d-flex align-items-end">{% include "partials/active_toggle.html" with field=form.is_active %}</div>
       <div class="col-12">{{ form.title.label_tag }}{{ form.title }}{{ form.title.errors }}</div>
       <div class="col-12">{{ form.message.label_tag }}{{ form.message }}{{ form.message.errors }}</div>
       <div class="col-md-6">{{ form.image.label_tag }}{{ form.image }}{{ form.image.errors }}</div>

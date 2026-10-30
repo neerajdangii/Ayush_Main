@@ -12,11 +12,11 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
   <h3 class="mb-0">Sales Invoices</h3>
   <div class="d-flex flex-wrap gap-2">
-    {% if perms.reports.view_report_data_sheet %}<a class="btn btn-outline-success" href="{% url 'reports:data_sheet' %}">Report Data Sheet</a>{% endif %}
-    {% if perms.bookings.manage_invoice_customers %}<a class="btn btn-outline-primary" href="{% url 'bookings:invoice_customer_list' %}">Invoice Customer Master</a>{% endif %}
-    {% if perms.bookings.manage_company_billing_settings %}<a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_print_template_master' %}">Invoice Template Master</a><a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_settings' %}#bill-number-settings">Bill Number</a>{% endif %}
-    <a class="btn btn-outline-secondary" href="{% url 'bookings:invoice_settings' %}">Company Bank Details</a>
-    <a class="btn btn-primary" href="{% url 'bookings:sales_invoice_create' %}">Create New Bill</a>
+    {% if perms.reports.view_report_data_sheet %}{% include "partials/animated_button.html" with url_name="reports:data_sheet" label="Report Data Sheet" %}{% endif %}
+    {% if perms.bookings.manage_invoice_customers %}{% include "partials/animated_button.html" with url_name="bookings:invoice_customer_list" label="Invoice Customer Master" %}{% endif %}
+    {% if perms.bookings.manage_company_billing_settings %}{% include "partials/animated_button.html" with url_name="bookings:invoice_print_template_master" label="Invoice Template Master" %}{% include "partials/animated_button.html" with url_name="bookings:invoice_settings" url_suffix="#bill-number-settings" label="Bill Number" %}{% endif %}
+    {% include "partials/animated_button.html" with url_name="bookings:invoice_settings" label="Company Bank Details" %}
+    {% include "partials/animated_button.html" with url_name="bookings:sales_invoice_create" label="Create New Bill" %}
   </div>
 </div>
 
@@ -57,16 +57,16 @@
         <td class="text-end">{{ invoice.grand_total|floatformat:2 }}</td>
         <td class="register-actions">
           <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-sm btn-outline-primary" href="{% url 'bookings:sales_invoice_print' invoice.pk %}">View / Print</a>
+            <a class="btn btn-sm btn-outline-primary invoice-action-view" href="{% url 'bookings:sales_invoice_print' invoice.pk %}">View / Print</a>
             {% if perms.bookings.manage_sales_invoices %}
-              <a class="btn btn-sm btn-outline-secondary" href="{% url 'bookings:sales_invoice_edit' invoice.pk %}">Edit</a>
+              <a class="btn btn-sm btn-outline-secondary invoice-action-edit" href="{% url 'bookings:sales_invoice_edit' invoice.pk %}">Edit</a>
               {% if invoice.status == 'draft' and perms.bookings.finalize_salesinvoice %}
               <form method="post" action="{% url 'bookings:sales_invoice_finalize' invoice.pk %}" class="d-inline" onsubmit="return confirm('Pass this draft invoice? This assigns and finalizes its bill number.');">
-                {% csrf_token %}<input type="hidden" name="return_to_list" value="1"><button type="submit" class="btn btn-sm btn-success">Pass</button>
+                {% csrf_token %}<input type="hidden" name="return_to_list" value="1"><button type="submit" class="btn btn-sm btn-success invoice-action-pass">Pass</button>
               </form>
               {% endif %}
               <form method="post" action="{% url 'bookings:sales_invoice_delete' invoice.pk %}" class="d-inline" onsubmit="return confirm('Delete this invoice? This cannot be undone.');">
-                {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                {% csrf_token %}<button type="submit" class="btn btn-sm btn-outline-danger delete-action-button delete-action-button--compact invoice-action-delete">Delete</button>
               </form>
             {% endif %}
           </div>
@@ -85,9 +85,9 @@
 
 {% if is_paginated %}
 <nav aria-label="Invoice pages"><ul class="pagination">
-  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?q={{ search_query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link pagination-previous-button" href="?q={{ search_query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
   <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
-  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?q={{ search_query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+  {% if page_obj.has_next %}<li class="page-item"><a class="page-link pagination-next-button" href="?q={{ search_query|urlencode }}&amp;status={{ selected_status|urlencode }}&amp;page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
 </ul></nav>
 {% endif %}
 {% endblock %}

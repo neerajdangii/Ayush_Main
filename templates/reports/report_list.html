@@ -11,9 +11,9 @@
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">Reports</h5>
     <div class="d-flex flex-wrap gap-2">
-      {% if perms.reports.view_report_data_sheet %}<a href="{% url 'reports:data_sheet' %}" class="btn btn-sm btn-outline-success">Report Data Sheet</a>{% endif %}
-      <a href="{% url 'reports:tds_template_list' %}" class="btn btn-sm btn-outline-secondary">TDS Master</a>
-      <a href="{% url 'reports:template_list' %}" class="btn btn-sm btn-outline-primary">Templates</a>
+      {% if perms.reports.view_report_data_sheet %}{% include "partials/animated_button.html" with url_name="reports:data_sheet" label="Report Data Sheet" %}{% endif %}
+      {% include "partials/animated_button.html" with url_name="reports:tds_template_list" label="TDS Master" %}
+      {% include "partials/animated_button.html" with url_name="reports:template_list" label="Templates" %}
     </div>
   </div>
   <div class="card-body table-responsive">
@@ -39,20 +39,27 @@
       </div>
       <div class="col-md-2">
         <select name="customer" class="form-select">
-          <option value="">All Company</option>
+          <option value="">All Parties</option>
           {% for customer_id, customer_name in customer_options %}
           <option value="{{ customer_id }}" {% if customer_filter == customer_id|stringformat:'s' %}selected{% endif %}>{{ customer_name }}</option>
           {% endfor %}
         </select>
       </div>
       <div class="col-md-2">
+        <select name="release_status" class="form-select">
+          <option value="">All Release Status</option>
+          <option value="released" {% if release_filter == 'released' %}selected{% endif %}>Released</option>
+          <option value="pending" {% if release_filter == 'pending' %}selected{% endif %}>Release Pending</option>
+        </select>
+      </div>
+      <div class="col-md-2">
         <button class="btn btn-outline-primary w-100" type="submit">Search</button>
       </div>
       <div class="col-md-2">
-        <a href="{% url 'reports:list' %}" class="btn btn-outline-secondary w-100">Reset</a>
+        <a href="{% url 'reports:list' %}" class="btn report-filter-reset w-100">Reset</a>
       </div>
     </form>
-    <table class="table table-bordered table-striped align-middle">
+    <table class="table table-bordered table-striped align-middle report-list-table">
       <thead class="table-light">
         <tr>
           <th>#</th>
@@ -86,28 +93,42 @@
             {% if r.final_outcome == 'pass' %}
             <span class="badge text-bg-success">Pass</span>
             {% else %}
-            <span class="badge text-bg-secondary">Draft</span>
+            <span class="badge report-draft-badge">Draft</span>
             {% endif %}
           </td>
           <td class="data-text-cell">{{ r.updated_by_display }}</td>
           <td>
             <div class="d-flex flex-wrap gap-2">
-              <a class="btn btn-sm btn-outline-primary" href="{% url 'reports:coa_print' r.pk %}?autoprint=1" target="_blank" rel="noopener">COA</a>
-              <a class="btn btn-sm btn-outline-success" href="{% url 'reports:coa_print' r.pk %}?plain=1&autoprint=1" target="_blank" rel="noopener">COA Plain</a>
-              <a class="btn btn-sm btn-outline-info" href="{% url 'reports:coa_print' r.pk %}?doc=test&autoprint=1" target="_blank" rel="noopener">Test Report</a>
-              <a class="btn btn-sm btn-outline-warning" href="{% url 'reports:coa_print' r.pk %}?doc=test&plain=1&autoprint=1" target="_blank" rel="noopener">Test Report Plain</a>
-              <a class="btn btn-sm btn-primary" href="{% url 'reports:coa_edit' r.pk %}">Edit</a>
-              <a class="btn btn-sm btn-outline-dark" href="{% url 'reports:coa_print' r.pk %}">View</a>
+              <a class="btn btn-sm btn-outline-primary report-action-coa" href="{% url 'reports:coa_print' r.pk %}?autoprint=1" target="_blank" rel="noopener">COA</a>
+              <a class="btn btn-sm btn-outline-success report-action-coa-plain" href="{% url 'reports:coa_print' r.pk %}?plain=1&autoprint=1" target="_blank" rel="noopener">COA Plain</a>
+              <a class="btn btn-sm btn-outline-info report-action-test" href="{% url 'reports:coa_print' r.pk %}?doc=test&autoprint=1" target="_blank" rel="noopener">Test Report</a>
+              <a class="btn btn-sm btn-outline-warning report-action-test-plain" href="{% url 'reports:coa_print' r.pk %}?doc=test&plain=1&autoprint=1" target="_blank" rel="noopener">Test Report Plain</a>
+              <a class="btn btn-sm btn-primary report-action-edit" href="{% url 'reports:coa_edit' r.pk %}">Edit</a>
+              <a class="btn btn-sm btn-outline-dark report-action-view" href="{% url 'reports:coa_print' r.pk %}">View</a>
               {% if perms.reports.change_report %}
               <form method="post" action="{% url 'reports:toggle_qr' r.pk %}" class="d-inline">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 {% if r.show_qr_code %}
-                <button class="btn btn-sm btn-outline-secondary" type="submit" name="show_qr_code" value="0" title="QR code is included in printed reports">QR On</button>
+                <button class="btn btn-sm btn-outline-secondary report-action-qr-on" type="submit" name="show_qr_code" value="0" title="QR code is included in printed reports">QR On</button>
                 {% else %}
-                <button class="btn btn-sm btn-outline-danger" type="submit" name="show_qr_code" value="1" title="QR code is hidden from printed reports">QR Off</button>
+                <button class="btn btn-sm btn-outline-danger report-action-qr-off" type="submit" name="show_qr_code" value="1" title="QR code is hidden from printed reports">QR Off</button>
                 {% endif %}
               </form>
+              {% if r.final_outcome == 'pass' %}
+              <form method="post" action="{% url 'reports:release_report' r.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="channel" value="whatsapp">
+                <button class="btn btn-sm report-action-release-whatsapp" type="submit" title="Record release and open WhatsApp">WhatsApp</button>
+              </form>
+              <form method="post" action="{% url 'reports:release_report' r.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <input type="hidden" name="channel" value="email">
+                <button class="btn btn-sm report-action-release-email" type="submit" title="Record release and open an email draft">Mail</button>
+              </form>
+              {% endif %}
               {% endif %}
             </div>
           </td>
@@ -123,7 +144,7 @@
       <ul class="pagination flex-wrap">
         {% if page_obj.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}&search_by={{ search_by }}&status={{ status_filter }}&customer={{ customer_filter }}">Previous</a>
+          <a class="page-link pagination-previous-button" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}&search_by={{ search_by }}&status={{ status_filter }}&customer={{ customer_filter }}&release_status={{ release_filter }}">Previous</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">Previous</span></li>
@@ -143,7 +164,7 @@
 
         {% if page_obj.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}&search_by={{ search_by }}&status={{ status_filter }}&customer={{ customer_filter }}">Next</a>
+          <a class="page-link pagination-next-button" href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query|urlencode }}{% endif %}&search_by={{ search_by }}&status={{ status_filter }}&customer={{ customer_filter }}&release_status={{ release_filter }}">Next</a>
         </li>
         {% else %}
         <li class="page-item disabled"><span class="page-link">Next</span></li>

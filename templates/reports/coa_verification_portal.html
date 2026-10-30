@@ -21,8 +21,13 @@
     .verification-details th { font-weight: 700; }
     .verification-instruction { margin: 24px 0 32px; font-size: 17px; font-style: italic; font-weight: 700; line-height: 1.65; }
     .verification-action { display: flex; justify-content: center; }
-    .verification-action a { display: inline-block; padding: 15px 30px; border-radius: 9px; background: {{ portal.button_color }}; color: {{ portal.button_text_color }}; font-size: 20px; font-weight: 600; text-align: center; text-decoration: none; transition: filter .16s ease, transform .16s ease, box-shadow .16s ease; }
-    .verification-action a:hover, .verification-action a:focus { filter: brightness(.94); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(25, 39, 63, .2); }
+    .verification-action a { display: inline-flex; align-items: center; gap: 3px; padding: .8em 1.3em .8em .9em; border: 0; border-radius: 16px; background: linear-gradient(to right, #0f0c29, #302b63, #24243e); color: #fff; cursor: pointer; font: inherit; font-size: 17px; font-weight: 500; letter-spacing: .05em; text-align: center; text-decoration: none; transition: box-shadow .2s ease, transform .2s ease; }
+    .verification-action a svg { flex: 0 0 auto; width: 1em; height: 1em; margin-right: 3px; transform: rotate(30deg); transition: transform .5s cubic-bezier(.76, 0, .24, 1); }
+    .verification-action a span { transition: transform .5s cubic-bezier(.76, 0, .24, 1); }
+    .verification-action a:hover, .verification-action a:focus-visible { color: #fff; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(25, 39, 63, .25); }
+    .verification-action a:hover svg, .verification-action a:focus-visible svg { transform: translateX(5px) rotate(90deg); }
+    .verification-action a:hover span, .verification-action a:focus-visible span { transform: translateX(7px); }
+    .verification-action a:focus-visible { outline: 3px solid #56baec; outline-offset: 3px; }
     @media (max-width: 480px) { body { padding: 12px 8px; } .verification-card { margin: 10px auto; padding: 20px 16px; } .verification-details { font-size: 15px; } .verification-details th, .verification-details td { padding: 10px; } }
     @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: .01ms !important; } }
   </style>
@@ -44,7 +49,7 @@
       </tbody>
     </table>
     <p class="verification-instruction">{{ portal.instruction }}</p>
-    {% if portal.public_report_enabled %}<div class="verification-action"><a href="{{ public_report_url }}">{{ portal.view_report_label }}</a></div>{% endif %}
+    {% if portal.public_report_enabled %}<div class="verification-action"><a href="{{ public_report_url }}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>{{ portal.view_report_label }}</span></a></div>{% endif %}
   </main>
   {% endif %}
 </body>

@@ -10,7 +10,7 @@
       <a class="btn btn-sm btn-outline-primary" href="{% url 'bookings:edit' booking.pk %}">Edit Booking</a>
       {% endif %}
       {% if perms.bookings.delete_booking %}
-      <a class="btn btn-sm btn-outline-danger" href="{% url 'bookings:delete' booking.pk %}">Delete Booking</a>
+      <a class="btn btn-sm btn-outline-danger delete-action-button" href="{% url 'bookings:delete' booking.pk %}">Delete Booking</a>
       {% endif %}
       <a class="btn btn-sm btn-outline-secondary" href="{% url 'bookings:list' %}">List Bookings</a>
       <a class="btn btn-sm btn-outline-secondary" href="{% url 'bookings:create' %}?duplicate={{ booking.pk }}">New Booking</a>

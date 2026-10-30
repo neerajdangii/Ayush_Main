@@ -7,7 +7,7 @@
     <p>Are you sure you want to delete <strong>{{ object.name }}</strong>?</p>
     <form method="post">
       {% csrf_token %}
-      <button class="btn btn-danger" type="submit">Delete</button>
+      <button class="btn btn-danger delete-action-button" type="submit">Delete</button>
       <a href="{% url 'bookings:master_list' master_slug %}" class="btn btn-outline-secondary">Cancel</a>
     </form>
   </div>

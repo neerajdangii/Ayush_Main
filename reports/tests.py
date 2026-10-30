@@ -1,5 +1,7 @@
 from datetime import datetime
+from io import BytesIO
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
@@ -12,7 +14,30 @@ from bookings.models import Booking, SampleNameMaster
 from .models import TDSDocumentTemplate
 from .template_library import build_generic_result_table, build_tests_without_templates_table
 from .dependencies import CircuitBreaker, DependencyUnavailable
-from .views import _fill_tds_trf_row_value, _render_tds_content, _render_tds_source_file, _split_tds_rendered_pages
+from .views import (
+    ReportReleaseDailyExcelView,
+    _fill_tds_trf_row_value,
+    _render_tds_content,
+    _render_tds_source_file,
+    _split_tds_rendered_pages,
+)
+
+
+class DailyReleaseWorkbookDownloadTests(SimpleTestCase):
+    def test_download_rebuilds_existing_daily_workbook(self):
+        request = RequestFactory().get("/reports/release/daily/2026-10-30/")
+
+        with (
+            patch(
+                "reports.views.save_daily_release_workbook",
+                return_value="report_releases/daily/report-releases-2026-10-30.xlsx",
+            ) as save_workbook,
+            patch("reports.views.default_storage.open", return_value=BytesIO(b"workbook")),
+        ):
+            response = ReportReleaseDailyExcelView().get(request, "2026-10-30")
+
+        save_workbook.assert_called_once_with(datetime(2026, 10, 30).date())
+        self.assertEqual(response.status_code, 200)
 
 
 class TDSRenderingSafetyTests(SimpleTestCase):

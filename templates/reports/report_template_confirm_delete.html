@@ -9,7 +9,7 @@
     <p>Delete template <strong>{{ object.name }}</strong>?</p>
     <form method="post">
       {% csrf_token %}
-      <button type="submit" class="btn btn-danger">Delete</button>
+      <button type="submit" class="btn btn-danger delete-action-button">Delete</button>
       <a href="{% url 'reports:template_list' %}" class="btn btn-outline-secondary">Cancel</a>
     </form>
   </div>

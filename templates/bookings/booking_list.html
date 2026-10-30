@@ -11,7 +11,7 @@
 <div class="card shadow-sm">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="mb-0">Bookings</h5>
-    <a href="{% url 'bookings:create' %}" class="btn btn-sm btn-primary">New Booking</a>
+    {% include "partials/animated_button.html" with url_name="bookings:create" label="New Booking" %}
   </div>
   <div class="card-body">
     <form method="get" class="row g-2 mb-3">
@@ -53,9 +53,9 @@
 
     <form method="post" action="{% url 'bookings:bulk_delete' %}" id="bulkDeleteForm">
       {% csrf_token %}
-      {% if perms.bookings.delete_booking %}<div class="d-flex justify-content-end mb-2"><button class="btn btn-danger btn-sm" id="bulkDeleteButton" disabled>Delete Selected</button></div>{% endif %}
+      {% if perms.bookings.delete_booking %}<div class="d-flex justify-content-end mb-2"><button class="btn btn-danger btn-sm delete-action-button" id="bulkDeleteButton" disabled>Delete Selected</button></div>{% endif %}
     <div class="table-responsive">
-      <table class="table table-bordered table-striped align-middle">
+      <table class="table table-bordered table-striped align-middle booking-list-table">
         <thead class="table-light">
           <tr>
             <th class="text-center" style="width: 42px;">{% if perms.bookings.delete_booking %}<input class="form-check-input" type="checkbox" id="selectAllBookings" aria-label="Select all bookings">{% endif %}</th>
@@ -95,7 +95,7 @@
             </td>
             <td class="data-text-cell">{{ b.customer.name }}</td>
             <td class="data-text-cell">{{ b.sample_name.display_name }}</td>
-            <td>{{ b.get_booking_type_display }}</td>
+            <td class="data-text-cell">{{ b.get_booking_type_display }}</td>
             <td>
               {% if b.is_reported_for_list %}
               <span class="badge text-bg-success">Approved</span>
@@ -107,16 +107,16 @@
               <div class="text-muted small data-text-cell">Changed by: {{ b.updated_by_display }}</div>
             </td>
             <td>
-              <a class="btn btn-sm btn-outline-dark" href="{% url 'bookings:detail' b.pk %}">View</a>
+              <a class="btn btn-sm btn-outline-dark booking-action-view" href="{% url 'bookings:detail' b.pk %}">View</a>
               {% if user|has_any_role:"Staff,Manager,Analyst,Admin" %}
-              <a class="btn btn-sm btn-outline-primary" href="{% url 'bookings:edit' b.pk %}">Edit</a>
-              <a class="btn btn-sm btn-outline-secondary" href="{% url 'bookings:create' %}?duplicate={{ b.pk }}">Duplicate</a>
+              <a class="btn btn-sm btn-outline-primary booking-action-edit" href="{% url 'bookings:edit' b.pk %}">Edit</a>
+              <a class="btn btn-sm btn-outline-secondary booking-action-duplicate" href="{% url 'bookings:create' %}?duplicate={{ b.pk }}">Duplicate</a>
               {% endif %}
               {% if perms.bookings.delete_booking %}
-              <a class="btn btn-sm btn-outline-danger" href="{% url 'bookings:delete' b.pk %}">Delete</a>
+              <a class="btn btn-sm btn-outline-danger delete-action-button delete-action-button--compact" href="{% url 'bookings:delete' b.pk %}">Delete</a>
               {% endif %}
               {% if user|has_role:"Checked By" %}
-              <a class="btn btn-sm btn-primary" href="{% url 'reports:approval' b.pk %}">Report</a>
+              <a class="btn btn-sm btn-primary booking-action-report" href="{% url 'reports:approval' b.pk %}">Report</a>
               {% endif %}
             </td>
           </tr>
@@ -132,7 +132,7 @@
     <nav>
       <ul class="pagination flex-wrap">
         {% if page_obj.has_previous %}
-          <li class="page-item"><a class="page-link" href="?search_by={{ search_by }}&q={{ q }}&status={{ status_filter }}&customer={{ customer_filter }}&page={{ page_obj.previous_page_number }}">Previous</a></li>
+          <li class="page-item"><a class="page-link pagination-previous-button" href="?search_by={{ search_by }}&q={{ q }}&status={{ status_filter }}&customer={{ customer_filter }}&page={{ page_obj.previous_page_number }}">Previous</a></li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Previous</span></li>
         {% endif %}
@@ -148,7 +148,7 @@
         {% endfor %}
 
         {% if page_obj.has_next %}
-          <li class="page-item"><a class="page-link" href="?search_by={{ search_by }}&q={{ q }}&status={{ status_filter }}&customer={{ customer_filter }}&page={{ page_obj.next_page_number }}">Next</a></li>
+          <li class="page-item"><a class="page-link pagination-next-button" href="?search_by={{ search_by }}&q={{ q }}&status={{ status_filter }}&customer={{ customer_filter }}&page={{ page_obj.next_page_number }}">Next</a></li>
         {% else %}
           <li class="page-item disabled"><span class="page-link">Next</span></li>
         {% endif %}

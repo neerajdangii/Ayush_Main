@@ -5,7 +5,7 @@ from html import unescape
 import logging
 from pathlib import Path
 import re
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
@@ -13,13 +13,14 @@ from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef
 from django.db.models import Q
 from django.core.files.storage import default_storage
-from django.http import Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import linebreaksbr
 from django.template import engines
@@ -35,7 +36,8 @@ from bookings.change_audit import record_coa_edit
 from bookings.permissions import RoleRequiredMixin, has_role
 
 from .forms import COAEditForm, COALetterheadForm, ReportApprovalForm, ReportTemplateForm, ReportVerificationPortalForm, TDSDocumentTemplateForm, TestLetterheadForm, _extract_uploaded_printable_content
-from .models import COALetterhead, Report, ReportRemark, ReportTemplate, ReportVerificationPortal, TDSDocumentTemplate, TestLetterhead
+from .models import COALetterhead, Report, ReportRelease, ReportRemark, ReportTemplate, ReportVerificationPortal, TDSDocumentTemplate, TestLetterhead
+from .release_exports import build_release_workbook, save_daily_release_workbook
 from .verification_portal import render_verification_layout
 
 
@@ -1469,7 +1471,8 @@ class ReportListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
                     report_id_value=OuterRef("pk"),
                     area=ChangeAuditEntry.Area.COA,
                 )
-            )
+            ),
+            has_release=Exists(ReportRelease.objects.filter(report_id=OuterRef("pk"))),
         ).filter(
             status__in=[Report.Status.MANAGER_APPROVED, Report.Status.INCHARGE_APPROVED]
         ).order_by("-updated_at", "-pk")
@@ -1477,6 +1480,7 @@ class ReportListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
         search_by = self.request.GET.get("search_by", "sample_reg").strip()
         status_filter = self.request.GET.get("status", "").strip()
         customer_filter = self.request.GET.get("customer", "").strip()
+        release_filter = self.request.GET.get("release_status", "").strip()
 
         if status_filter == Report.FinalOutcome.PASS:
             qs = qs.filter(final_outcome=Report.FinalOutcome.PASS)
@@ -1485,6 +1489,11 @@ class ReportListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
 
         if customer_filter:
             qs = qs.filter(booking__customer_id=customer_filter)
+
+        if release_filter == "released":
+            qs = qs.filter(final_outcome=Report.FinalOutcome.PASS, has_release=True)
+        elif release_filter == "pending":
+            qs = qs.filter(final_outcome=Report.FinalOutcome.PASS, has_release=False)
 
         if search:
             if search_by == "booking_id":
@@ -1505,6 +1514,7 @@ class ReportListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
         context["search_by"] = self.request.GET.get("search_by", "sample_reg").strip()
         context["status_filter"] = self.request.GET.get("status", "").strip()
         context["customer_filter"] = self.request.GET.get("customer", "").strip()
+        context["release_filter"] = self.request.GET.get("release_status", "").strip()
         context["customer_options"] = (
             Booking.objects.select_related("customer")
             .filter(customer__isnull=False)
@@ -1523,6 +1533,263 @@ class ReportListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
         return context
 
 
+def _filtered_report_releases(request):
+    queryset = ReportRelease.objects.select_related("report", "report__booking", "released_by").filter(
+        Q(report__isnull=True) | Q(report__final_outcome=Report.FinalOutcome.PASS)
+    )
+    search = request.GET.get("q", "").strip()
+    date_from = parse_date(request.GET.get("date_from", "").strip())
+    date_to = parse_date(request.GET.get("date_to", "").strip())
+    channel = request.GET.get("channel", "").strip()
+    party = request.GET.get("party", "").strip()
+
+    if date_from:
+        queryset = queryset.filter(released_at__date__gte=date_from)
+    if date_to:
+        queryset = queryset.filter(released_at__date__lte=date_to)
+    if channel in ReportRelease.Channel.values:
+        queryset = queryset.filter(channel=channel)
+    if party:
+        queryset = queryset.filter(report__booking__customer_id=party)
+    if search:
+        queryset = queryset.filter(
+            Q(certificate_no__icontains=search)
+            | Q(sample_registration_no__icontains=search)
+            | Q(batch_no__icontains=search)
+            | Q(booking_code__icontains=search)
+            | Q(sample_name__icontains=search)
+            | Q(party_name__icontains=search)
+            | Q(contact__icontains=search)
+            | Q(released_by_name__icontains=search)
+        )
+    return queryset.order_by("-released_at", "-pk")
+
+
+def _pending_release_reports(request):
+    """Approved reports that have not yet been sent through a release channel."""
+    queryset = Report.objects.select_related("booking", "booking__customer", "booking__sample_name").filter(
+        status__in=PUBLIC_REPORT_ALLOWED_STATUSES,
+        final_outcome=Report.FinalOutcome.PASS,
+        release_records__isnull=True,
+    )
+    search = request.GET.get("q", "").strip()
+    date_from = parse_date(request.GET.get("date_from", "").strip())
+    date_to = parse_date(request.GET.get("date_to", "").strip())
+    party = request.GET.get("party", "").strip()
+
+    if date_from:
+        queryset = queryset.filter(created_at__date__gte=date_from)
+    if date_to:
+        queryset = queryset.filter(created_at__date__lte=date_to)
+    if party:
+        queryset = queryset.filter(booking__customer_id=party)
+    if search:
+        queryset = queryset.filter(
+            Q(booking__certificate_no__icontains=search)
+            | Q(booking__batch_no__icontains=search)
+            | Q(booking__tracking_code__icontains=search)
+            | Q(booking__sample_name__name__icontains=search)
+            | Q(booking__customer__name__icontains=search)
+        )
+    return queryset.order_by("-updated_at", "-pk")
+
+
+class ReportReleaseListView(PermissionRequiredMixin, RoleRequiredMixin, ListView):
+    permission_required = "reports.view_report"
+    required_roles = ("Manager", "Incharge", "Analyst", "Admin")
+    template_name = "reports/report_release_list.html"
+    context_object_name = "releases"
+    paginate_by = 25
+
+    def get_queryset(self):
+        if self.request.GET.get("release_status", "released") == "pending":
+            return _pending_release_reports(self.request)
+        return _filtered_report_releases(self.request)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        query_params = self.request.GET.copy()
+        query_params.pop("page", None)
+        context.update({
+            "search_query": self.request.GET.get("q", "").strip(),
+            "date_from": self.request.GET.get("date_from", "").strip(),
+            "date_to": self.request.GET.get("date_to", "").strip(),
+            "selected_channel": self.request.GET.get("channel", "").strip(),
+            "selected_party": self.request.GET.get("party", "").strip(),
+            "selected_release_status": self.request.GET.get("release_status", "released").strip(),
+            "party_options": (
+                Booking.objects.select_related("customer")
+                .filter(customer__isnull=False)
+                .values_list("customer_id", "customer__name")
+                .distinct()
+                .order_by("customer__name")
+            ),
+            "query_string": query_params.urlencode(),
+            "daily_download_date": (
+                parse_date(self.request.GET.get("daily_date", "").strip()) or timezone.localdate()
+            ).isoformat(),
+        })
+        return context
+
+
+class ReportReleaseExcelView(PermissionRequiredMixin, RoleRequiredMixin, View):
+    permission_required = "reports.view_report"
+    required_roles = ("Manager", "Incharge", "Analyst", "Admin")
+
+    def get(self, request, *args, **kwargs):
+        content = build_release_workbook(_filtered_report_releases(request))
+        response = HttpResponse(
+            content,
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = 'attachment; filename="report-releases-filtered.xlsx"'
+        return response
+
+
+class ReportReleaseDailyExcelView(PermissionRequiredMixin, RoleRequiredMixin, View):
+    permission_required = "reports.view_report"
+    required_roles = ("Manager", "Incharge", "Analyst", "Admin")
+
+    def get(self, request, release_date, *args, **kwargs):
+        release_day = parse_date(release_date)
+        if not release_day:
+            raise Http404("Invalid release date.")
+        # The daily file is an archive convenience, not the source of truth.
+        # Rebuild it before every download so a previously stored workbook
+        # cannot keep serving an older release register or column layout.
+        path = save_daily_release_workbook(release_day)
+        try:
+            workbook_file = default_storage.open(path, "rb")
+        except OSError as exc:
+            raise Http404("No release workbook exists for this date.") from exc
+        return FileResponse(
+            workbook_file,
+            as_attachment=True,
+            filename=f"report-releases-{release_day.isoformat()}.xlsx",
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+
+class ReportReleaseActionView(PermissionRequiredMixin, RoleRequiredMixin, View):
+    permission_required = "reports.change_report"
+    required_roles = ("Manager", "Incharge", "Analyst", "Admin")
+
+    def post(self, request, pk, *args, **kwargs):
+        report = get_object_or_404(
+            Report.objects.select_related("booking", "booking__customer", "booking__sample_name"),
+            pk=pk,
+        )
+        return_url = request.POST.get("next", "")
+        if not url_has_allowed_host_and_scheme(return_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+            return_url = reverse("reports:list")
+
+        channel = request.POST.get("channel", "")
+        if channel not in ReportRelease.Channel.values:
+            messages.error(request, "Choose WhatsApp or Email to release this report.")
+            return redirect(return_url)
+        if (
+            report.status not in PUBLIC_REPORT_ALLOWED_STATUSES
+            or report.final_outcome != Report.FinalOutcome.PASS
+        ):
+            messages.error(request, "Only approved reports with a Pass outcome can be released.")
+            return redirect(return_url)
+
+        booking = report.booking
+        customer = booking.customer
+        if channel == ReportRelease.Channel.EMAIL:
+            contact = (customer.email or "").strip() if customer else ""
+            phone_number = ""
+        else:
+            contact = (customer.telephone or "").strip() if customer else ""
+            phone_number = re.sub(r"\D", "", contact)
+            if len(phone_number) < 7:
+                phone_number = ""
+
+        report_url = request.build_absolute_uri(reverse("reports:coa_public", kwargs={"pk": report.pk}))
+        release_values = {
+            "report": report,
+            "certificate_no": report.certificate_no,
+            "sample_registration_no": booking.sample_registration_no or "",
+            "batch_no": booking.batch_no or "",
+            "booking_code": booking.tracking_code or "",
+            "sample_name": booking.sample_name.display_name if booking.sample_name_id else "",
+            "party_name": customer.name if customer else "",
+            "contact": contact,
+            "report_url": report_url,
+            "channel": channel,
+            "released_by": request.user,
+            "released_by_name": request.user.get_username(),
+            "release_date": report.analysis_end_date,
+            "coa_created_at": report.created_at,
+        }
+        release = ReportRelease.objects.filter(report=report).order_by("-released_at", "-pk").first()
+        previous_released_at = None
+        if release:
+            previous_released_at = release.released_at
+            previous_release_date = release.release_date
+            previous_coa_created_at = release.coa_created_at
+            for field, value in release_values.items():
+                setattr(release, field, value)
+            release.previous_coa_created_at = previous_coa_created_at
+            release.previous_release_date = previous_release_date
+            release.previous_released_at = previous_released_at
+            release.has_changes = True
+            release.released_at = timezone.now()
+            release.save()
+        else:
+            release = ReportRelease.objects.create(**release_values)
+
+        archive_warning = ""
+        try:
+            release_days = {timezone.localdate(release.released_at)}
+            if previous_released_at:
+                release_days.add(timezone.localdate(previous_released_at))
+            for release_day in release_days:
+                save_daily_release_workbook(release_day)
+        except Exception:
+            logger.exception("Unable to update daily report release workbook for release %s", release.pk)
+            archive_warning = " The daily Excel file could not be updated; the release is still recorded in the database."
+
+        subject = f"Certificate of Analysis {release.certificate_no}"
+        body = (
+            f"Please find the released report for {release.sample_name}.\n"
+            f"Certificate No: {release.certificate_no}\n"
+            f"Batch No: {release.batch_no or '-'}\n"
+            f"Report: {report_url}"
+        )
+        portal_enabled = ReportVerificationPortal.current().public_report_enabled
+        if not portal_enabled:
+            archive_warning += " The release is recorded, but public report access is disabled in the verification portal."
+        if channel == ReportRelease.Channel.EMAIL:
+            compose_url = (
+                f"mailto:{quote(contact, safe='@.+-_')}?{urlencode({'subject': subject, 'body': body})}"
+                if contact else ""
+            )
+            channel_label = "email"
+        else:
+            compose_url = f"https://wa.me/{phone_number}?{urlencode({'text': body})}" if phone_number else ""
+            channel_label = "WhatsApp"
+
+        if not compose_url:
+            missing_contact = "email address" if channel == ReportRelease.Channel.EMAIL else "WhatsApp phone number"
+            messages.warning(
+                request,
+                f"{channel_label} release recorded for {release.certificate_no}. "
+                f"Add a valid {missing_contact} to the party master to open a message draft.{archive_warning}",
+            )
+            return redirect(return_url)
+
+        messages.success(
+            request,
+            f"Release recorded for {release.certificate_no}.{archive_warning}",
+        )
+        if channel == ReportRelease.Channel.EMAIL:
+            response = HttpResponse(status=302)
+            response["Location"] = compose_url
+            return response
+        return redirect(compose_url)
+
+
 class ReportDataSheetView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     """Searchable, paginated register containing every saved report record."""
     permission_required = "reports.view_report_data_sheet"
@@ -1535,7 +1802,8 @@ class ReportDataSheetView(LoginRequiredMixin, PermissionRequiredMixin, ListView)
         queryset = Report.objects.select_related(
             "booking", "booking__customer", "booking__sample_name", "manager", "incharge", "updated_by"
         ).annotate(
-            has_sales_invoice=Exists(SalesInvoiceLine.objects.filter(booking_id=OuterRef("booking_id")))
+            has_sales_invoice=Exists(SalesInvoiceLine.objects.filter(booking_id=OuterRef("booking_id"))),
+            has_release=Exists(ReportRelease.objects.filter(report_id=OuterRef("pk"))),
         ).order_by("-created_at", "-pk")
         include_invoiced = self.request.GET.get("include_invoiced") == "1"
         if not include_invoiced:
@@ -1568,6 +1836,8 @@ class ReportDataSheetView(LoginRequiredMixin, PermissionRequiredMixin, ListView)
             queryset = queryset.filter(status=report_status)
         if outcome in Report.FinalOutcome.values:
             queryset = queryset.filter(final_outcome=outcome)
+        elif outcome == "released":
+            queryset = queryset.filter(has_release=True)
         if batch:
             queryset = queryset.filter(booking__batch_no__icontains=batch)
         try:

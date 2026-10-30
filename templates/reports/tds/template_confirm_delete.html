@@ -9,7 +9,7 @@
     <p>Delete <strong>{{ object.name }}</strong> from {{ object.get_document_type_display }} templates?</p>
     <form method="post" class="d-flex gap-2">
       {% csrf_token %}
-      <button class="btn btn-danger" type="submit">Delete</button>
+      <button class="btn btn-danger delete-action-button" type="submit">Delete</button>
       <a href="{% url 'reports:tds_template_list' %}" class="btn btn-outline-secondary">Cancel</a>
     </form>
   </div>

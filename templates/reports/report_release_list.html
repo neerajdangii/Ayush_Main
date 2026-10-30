@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Report Release | LIMS{% endblock %}
+{% block content %}
+<div class="card shadow-sm">
+  <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div>
+      <h5 class="mb-0">Report Release Register</h5>
+      <div class="small text-muted">Release actions are recorded by date, channel, and user. Daily Excel files are updated automatically.</div>
+      <div class="small text-muted">{{ page_obj.paginator.count }} release record{{ page_obj.paginator.count|pluralize }}</div>
+    </div>
+    {% include "partials/animated_button.html" with url_name="reports:list" label="Back to Reports" %}
+  </div>
+  <div class="card-body">
+    <form method="get" class="row g-2 align-items-end mb-3">
+      <div class="col-lg-4 col-md-6">
+        <label class="form-label" for="release-search">Search batch, party, sample, booking, certificate, or user</label>
+        <input class="form-control" id="release-search" type="search" name="q" value="{{ search_query }}" placeholder="Enter search text">
+      </div>
+      <div class="col-sm-6 col-lg-2">
+        <label class="form-label" for="release-party">Party</label>
+        <select class="form-select" id="release-party" name="party">
+          <option value="">All parties</option>
+          {% for party_id, party_name in party_options %}
+          <option value="{{ party_id }}" {% if selected_party == party_id|stringformat:'s' %}selected{% endif %}>{{ party_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-2">
+        <label class="form-label" for="release-status">Release status</label>
+        <select class="form-select" id="release-status" name="release_status">
+          <option value="released" {% if selected_release_status == 'released' %}selected{% endif %}>Released</option>
+          <option value="pending" {% if selected_release_status == 'pending' %}selected{% endif %}>Release Pending</option>
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-2">
+        <label class="form-label" for="release-date-from">Released from</label>
+        <input class="form-control" id="release-date-from" type="date" name="date_from" value="{{ date_from }}">
+      </div>
+      <div class="col-sm-6 col-lg-2">
+        <label class="form-label" for="release-date-to">Released to</label>
+        <input class="form-control" id="release-date-to" type="date" name="date_to" value="{{ date_to }}">
+      </div>
+      <div class="col-sm-6 col-lg-2">
+        <label class="form-label" for="release-channel">Channel</label>
+        <select class="form-select" id="release-channel" name="channel">
+          <option value="">All channels</option>
+          <option value="whatsapp" {% if selected_channel == 'whatsapp' %}selected{% endif %}>WhatsApp</option>
+          <option value="email" {% if selected_channel == 'email' %}selected{% endif %}>Email</option>
+        </select>
+      </div>
+      <div class="col-sm-6 col-lg-2 d-flex gap-2">
+        <button class="btn btn-primary flex-fill" type="submit">Search</button>
+        <a class="btn report-filter-reset flex-fill" href="{% url 'reports:release_list' %}">Reset</a>
+      </div>
+      <div class="col-lg-8 d-flex justify-content-lg-end">
+        <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+          <label class="visually-hidden" for="daily-release-date">Daily Excel date</label>
+          <input class="form-control w-auto" id="daily-release-date" type="date" value="{{ daily_download_date }}">
+          <a class="btn btn-outline-success" id="daily-release-download" href="{% url 'reports:release_daily_excel' daily_download_date %}">Download Daily Excel</a>
+          <button class="btn btn-outline-success" type="submit" formaction="{% url 'reports:release_excel' %}">Download Filtered Excel</button>
+        </div>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped align-middle">
+        <thead class="table-light"><tr><th>Release Details</th><th>Certificate No</th><th>Batch No</th><th>Booking ID</th><th>Sample Name</th><th>Party</th><th>Channel</th><th>Released By</th><th>Report</th></tr></thead>
+        <tbody>
+          {% if selected_release_status == 'pending' %}
+          {% for report in releases %}
+          <tr class="table-warning">
+            <td><span class="badge text-bg-warning">Release Pending</span></td>
+            <td>{{ report.certificate_no|default:'-' }}</td>
+            <td>{{ report.booking.batch_no|default:'-' }}</td>
+            <td>{{ report.booking.tracking_code|default:'-' }}</td>
+            <td>{{ report.booking.sample_name.display_name|default:'-' }}</td>
+            <td>{{ report.booking.customer.name|default:'-' }}</td>
+            <td>-</td>
+            <td>-</td>
+            <td><a class="btn btn-sm btn-outline-primary" href="{% url 'reports:coa_print' report.pk %}" target="_blank" rel="noopener">Open Report</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9" class="text-center py-4">No reports are pending release for these filters.</td></tr>
+          {% endfor %}
+          {% else %}
+          {% for release in releases %}
+          <tr{% if release.has_changes %} class="table-danger" title="This release was changed after its original release."{% endif %}>
+            <td class="text-nowrap">
+              <div><strong>Released on:</strong> {{ release.released_at|date:'d/m/Y h:i:s A' }}</div>
+              {% if release.has_changes %}
+              <hr class="my-1">
+              <div><strong>Previous released on:</strong> {{ release.previous_released_at|date:'d/m/Y h:i:s A'|default:'-' }}</div>
+              {% endif %}
+            </td>
+            <td>{{ release.certificate_no|default:'-' }}</td>
+            <td>{{ release.batch_no|default:'-' }}</td>
+            <td>{{ release.booking_code|default:'-' }}</td>
+            <td>{{ release.sample_name|default:'-' }}</td>
+            <td>{{ release.party_name|default:'-' }}</td>
+            <td>{% if release.channel == 'whatsapp' %}WhatsApp{% else %}Email{% endif %}</td>
+            <td>{{ release.released_by_name|default:'-' }}</td>
+            <td>{% if release.report_url %}<a class="btn btn-sm btn-outline-primary" href="{{ release.report_url }}" target="_blank" rel="noopener">Open Report</a>{% else %}-{% endif %}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="9" class="text-center py-4">No reports have been released for these filters.</td></tr>
+          {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+    <nav aria-label="Report release pages"><ul class="pagination flex-wrap">
+      {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+      <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+      {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{{ query_string }}{% if query_string %}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+  const dailyReleaseDate = document.getElementById('daily-release-date');
+  const dailyReleaseDownload = document.getElementById('daily-release-download');
+  if (dailyReleaseDate && dailyReleaseDownload) {
+    const urlTemplate = "{% url 'reports:release_daily_excel' 'DATE_VALUE' %}";
+    const updateDailyReleaseLink = () => {
+      dailyReleaseDownload.href = urlTemplate.replace('DATE_VALUE', dailyReleaseDate.value);
+      dailyReleaseDownload.classList.toggle('disabled', !dailyReleaseDate.value);
+      dailyReleaseDownload.setAttribute('aria-disabled', String(!dailyReleaseDate.value));
+    };
+    dailyReleaseDate.addEventListener('change', updateDailyReleaseLink);
+    updateDailyReleaseLink();
+  }
+</script>
+{% endblock %}

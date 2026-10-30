@@ -72,18 +72,16 @@
           {{ form.limits.errors }}
         </div>
         <div class="col-md-4 d-flex align-items-end">
-          <div class="form-check mt-2">
-            {{ form.is_active }}
-            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
+          <div class="mt-2">
+            {% include "partials/active_toggle.html" with field=form.is_active label="Active" %}
           </div>
         </div>
       {% else %}
       {% for field in form %}
         {% if field.name == 'is_active' %}
         <div class="col-md-4 d-flex align-items-end">
-          <div class="form-check mt-2">
-            {{ field }}
-            <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          <div class="mt-2">
+            {% include "partials/active_toggle.html" with field=field %}
           </div>
         </div>
         {% else %}

@@ -15,7 +15,7 @@
     </div>
     <form method="post" class="d-flex gap-2">
       {% csrf_token %}
-      <button class="btn btn-danger" type="submit">Yes, Delete</button>
+      <button class="btn btn-danger delete-action-button" type="submit">Yes, Delete</button>
       <a class="btn btn-outline-secondary" href="{% url 'accounts:user_edit' object.pk %}">Cancel</a>
     </form>
   </div>

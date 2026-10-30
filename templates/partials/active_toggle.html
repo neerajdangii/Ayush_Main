@@ -1,0 +1,8 @@
+<label class="active-toggle" for="{{ field.id_for_label }}">
+  {{ field }}
+  <span class="active-toggle-track" aria-hidden="true">
+    <svg class="active-toggle-unlocked" viewBox="0 0 24 24" focusable="false"><path d="M7 10V7a5 5 0 0 1 9.8-1M6 10h12v10H6z" /></svg>
+    <svg class="active-toggle-locked" viewBox="0 0 24 24" focusable="false"><path d="M7 10V7a5 5 0 0 1 10 0v3M6 10h12v10H6z" /></svg>
+  </span>
+  <span class="active-toggle-label">{{ label|default:field.label }}</span>
+</label>

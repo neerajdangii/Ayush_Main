@@ -54,7 +54,7 @@
               <a href="{% url 'reports:template_edit' template.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
               {% endif %}
               {% if perms.reports.delete_reporttemplate %}
-              <a href="{% url 'reports:template_delete' template.pk %}" class="btn btn-sm btn-outline-danger">Delete</a>
+              <a href="{% url 'reports:template_delete' template.pk %}" class="btn btn-sm btn-outline-danger delete-action-button delete-action-button--compact">Delete</a>
               {% endif %}
             </td>
           </tr>

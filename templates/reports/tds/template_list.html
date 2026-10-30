@@ -80,7 +80,7 @@
               <a class="btn btn-sm btn-outline-primary" href="{% url 'reports:tds_template_edit' template.pk %}">Edit</a>
               {% endif %}
               {% if perms.reports.delete_tdsdocumenttemplate %}
-              <a class="btn btn-sm btn-outline-danger" href="{% url 'reports:tds_template_delete' template.pk %}">Delete</a>
+              <a class="btn btn-sm btn-outline-danger delete-action-button delete-action-button--compact" href="{% url 'reports:tds_template_delete' template.pk %}">Delete</a>
               {% endif %}
             </td>
           </tr>

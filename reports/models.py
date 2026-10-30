@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.files import File
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 from django.utils.html import escape
 
 from bookings.models import Booking, ProtocolMaster, SampleNameMaster, TestMaster
@@ -495,3 +496,49 @@ class Report(models.Model):
     def __str__(self) -> str:
         reg = self.booking.sample_registration_no if self.booking else None
         return f"Report - {reg or 'No Reg No'}"
+
+
+class ReportRelease(models.Model):
+    class Channel(models.TextChoices):
+        WHATSAPP = "whatsapp", "WhatsApp"
+        EMAIL = "email", "Email"
+
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.SET_NULL,
+        related_name="release_records",
+        null=True,
+        blank=True,
+    )
+    certificate_no = models.CharField(max_length=120, blank=True)
+    sample_registration_no = models.CharField(max_length=120, blank=True)
+    batch_no = models.CharField(max_length=120, blank=True)
+    booking_code = models.CharField(max_length=120, blank=True)
+    sample_name = models.CharField(max_length=255, blank=True)
+    party_name = models.CharField(max_length=255, blank=True)
+    contact = models.CharField(max_length=255, blank=True)
+    report_url = models.URLField(max_length=1000, blank=True)
+    channel = models.CharField(max_length=20, choices=Channel.choices)
+    released_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="report_release_records",
+        null=True,
+        blank=True,
+    )
+    released_by_name = models.CharField(max_length=255, blank=True)
+    # "Release Date" is the COA analysis-completion date.  "Released On"
+    # remains the timestamp at which the user sends the report.
+    release_date = models.DateTimeField(null=True, blank=True)
+    coa_created_at = models.DateTimeField(null=True, blank=True)
+    released_at = models.DateTimeField(default=timezone.now, db_index=True)
+    previous_release_date = models.DateTimeField(null=True, blank=True)
+    previous_coa_created_at = models.DateTimeField(null=True, blank=True)
+    previous_released_at = models.DateTimeField(null=True, blank=True)
+    has_changes = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-released_at", "-pk"]
+
+    def __str__(self) -> str:
+        return f"{self.certificate_no or self.sample_registration_no} via {self.get_channel_display()}"

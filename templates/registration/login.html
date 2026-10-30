@@ -2,7 +2,15 @@
 {% block title %}Login | LIMS{% endblock %}
 {% block content %}
 <section class="auth-shell">
-  <aside class="auth-left">
+  <aside class="auth-left pattern-bg">
+    <svg class="cube-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="rgba(255,255,255,.34)" stroke-width="2">
+        <path d="m120 100 90-52 90 52v104l-90 52-90-52z m90-52v104m90-52-90 52-90-52m90 52v104"/>
+        <path d="m410 260 90-52 90 52v104l-90 52-90-52z m90-52v104m90-52-90 52-90-52m90 52v104"/>
+        <path d="m150 410 70-40 70 40v80l-70 40-70-40z m70-40v80m70-40-70 40-70-40m70 40v80"/>
+        <path d="m570 40 65-38 65 38v76l-65 38-65-38z m65-38v76m65-38-65 38-65-38m65 38v76"/>
+      </g>
+    </svg>
     <h1>Lab Information Management System</h1>
     <p class="sub">Secure login for booking and report workflow.</p>
   </aside>
@@ -12,16 +20,36 @@
     <p class="sub">Enter username and password</p>
     <form method="post">
       {% csrf_token %}
-      {{ form.non_field_errors }}
+  whatap ans     {{ form.non_field_errors }}
 
       <label for="id_username">Username</label>
       {{ form.username }}
 
       <label for="id_password">Password</label>
-      {{ form.password }}
+      <div class="input-group login-password-group">
+        {{ form.password }}
+        <button class="btn btn-outline-secondary login-password-toggle" type="button" id="toggleLoginPassword" aria-controls="id_password" aria-label="Show password" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="login-eye-shape" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle class="login-eye-shape" cx="12" cy="12" r="3"/><path class="login-eye-slash" d="m4 4 16 16"/></svg>
+        </button>
+      </div>
 
       <button class="btn btn-primary btn-block" type="submit">Sign in</button>
     </form>
   </section>
 </section>
+{% endblock %}
+{% block extra_js %}
+<script>
+  const loginPassword = document.getElementById('id_password');
+  const toggleLoginPassword = document.getElementById('toggleLoginPassword');
+  if (loginPassword && toggleLoginPassword) {
+    toggleLoginPassword.addEventListener('click', () => {
+      const showPassword = loginPassword.type === 'password';
+      loginPassword.type = showPassword ? 'text' : 'password';
+      toggleLoginPassword.classList.toggle('is-visible', showPassword);
+      toggleLoginPassword.setAttribute('aria-label', `${showPassword ? 'Hide' : 'Show'} password`);
+      toggleLoginPassword.setAttribute('aria-pressed', String(showPassword));
+    });
+  }
+</script>
 {% endblock %}

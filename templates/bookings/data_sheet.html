@@ -8,7 +8,7 @@
   <a class="btn btn-outline-secondary btn-sm" href="{% url 'dashboard' %}">Dashboard</a>
 </div>
 
-<div class="card shadow-sm">
+<div class="card shadow-sm data-sheet-panel">
   <div class="card-body">
     <form method="get" class="row g-3 align-items-end">
       <div class="col-md-6 col-lg-4">
@@ -56,7 +56,7 @@
     {% if party_report_requested %}
     <div class="row g-3 mt-1">
       <div class="col-lg-4">
-        <div class="border rounded bg-light h-100 p-3">
+        <div class="border rounded bg-light h-100 p-3 data-sheet-stat-card">
           <div class="text-muted small">Samples booked in selected period</div>
           <div class="display-6 fw-semibold">{{ total_samples }}</div>
         </div>

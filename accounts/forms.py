@@ -71,6 +71,13 @@ def _user_management_permission():
     return _permission("accounts", "manage_users")
 
 
+def _report_release_permissions():
+    return list(Permission.objects.filter(
+        content_type__app_label="reports",
+        codename__in=["view_report", "change_report"],
+    ))
+
+
 DELEGATED_PERMISSION_FIELDS = {
     "can_delete_bookings": [("bookings", "delete_booking")],
     "can_view_data_sheet": [("bookings", "view_data_sheet")],
@@ -87,6 +94,10 @@ DELEGATED_PERMISSION_FIELDS = {
     "can_edit_tinymce_source": [("accounts", "edit_tinymce_source")],
     "can_manage_letterheads": [("reports", "manage_letterheads")],
     "can_manage_users": [("accounts", "manage_users")],
+    "can_manage_report_releases": [
+        ("reports", "view_report"),
+        ("reports", "change_report"),
+    ],
     "can_assign_bookings": [("bookings", "assign_booking")],
 }
 
@@ -248,6 +259,7 @@ class AdminUserCreateForm(UserCreationForm):
     can_edit_tinymce_source = forms.BooleanField(required=False, label="TinyMCE Source Code")
     can_manage_letterheads = forms.BooleanField(required=False, label="Letterhead Upload")
     can_manage_users = forms.BooleanField(required=False, label="User Management")
+    can_manage_report_releases = forms.BooleanField(required=False, label="Report Release Access")
     can_assign_bookings = forms.BooleanField(required=False, label="Assign Bookings")
     master_access = forms.MultipleChoiceField(
         choices=[(key, label) for key, label, _codenames in MASTER_ACCESS_OPTIONS],
@@ -299,6 +311,7 @@ class AdminUserCreateForm(UserCreationForm):
             "can_manage_system_settings", "can_edit_tinymce_source",
             "can_manage_letterheads",
             "can_manage_users",
+            "can_manage_report_releases",
             "can_assign_bookings",
             "signature_file",
             "groups",
@@ -327,6 +340,7 @@ class AdminUserCreateForm(UserCreationForm):
         self.fields["can_edit_tinymce_source"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_letterheads"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_users"].widget.attrs["class"] = "form-check-input"
+        self.fields["can_manage_report_releases"].widget.attrs["class"] = "form-check-input"
         self.fields["can_assign_bookings"].widget.attrs["class"] = "form-check-input"
         self.fields["signature_file"].widget.attrs["class"] = "form-control"
         self.fields["permissions"].widget.attrs["class"] = "form-check-input"
@@ -350,6 +364,7 @@ class AdminUserCreateForm(UserCreationForm):
         can_edit_tinymce_source = bool(self.cleaned_data.get("can_edit_tinymce_source"))
         can_manage_letterheads = bool(self.cleaned_data.get("can_manage_letterheads"))
         can_manage_users = bool(self.cleaned_data.get("can_manage_users"))
+        can_manage_report_releases = bool(self.cleaned_data.get("can_manage_report_releases"))
         can_assign_bookings = bool(self.cleaned_data.get("can_assign_bookings"))
         can_assign_bookings = bool(self.cleaned_data.get("can_assign_bookings"))
         user.is_staff = bool(self.cleaned_data.get("is_staff", False)) or checked_by or person_incharge
@@ -401,6 +416,8 @@ class AdminUserCreateForm(UserCreationForm):
                 permission = _user_management_permission()
                 if permission:
                     selected_permissions.append(permission)
+            if can_manage_report_releases:
+                selected_permissions.extend(_report_release_permissions())
             if can_assign_bookings:
                 assign_perm = _permission("bookings", "assign_booking")
                 if assign_perm:
@@ -465,6 +482,7 @@ class AdminUserUpdateForm(forms.ModelForm):
     can_edit_tinymce_source = forms.BooleanField(required=False, label="TinyMCE Source Code")
     can_manage_letterheads = forms.BooleanField(required=False, label="Letterhead Upload")
     can_manage_users = forms.BooleanField(required=False, label="User Management")
+    can_manage_report_releases = forms.BooleanField(required=False, label="Report Release Access")
     can_assign_bookings = forms.BooleanField(required=False, label="Assign Bookings")
     master_access = forms.MultipleChoiceField(
         choices=[(key, label) for key, label, _codenames in MASTER_ACCESS_OPTIONS],
@@ -515,6 +533,7 @@ class AdminUserUpdateForm(forms.ModelForm):
             "can_manage_system_settings", "can_edit_tinymce_source",
             "can_manage_letterheads",
             "can_manage_users",
+            "can_manage_report_releases",
             "can_assign_bookings",
             "signature_file",
             "groups",
@@ -545,6 +564,7 @@ class AdminUserUpdateForm(forms.ModelForm):
         self.fields["can_edit_tinymce_source"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_letterheads"].widget.attrs["class"] = "form-check-input"
         self.fields["can_manage_users"].widget.attrs["class"] = "form-check-input"
+        self.fields["can_manage_report_releases"].widget.attrs["class"] = "form-check-input"
         self.fields["signature_file"].widget.attrs["class"] = "form-control"
         self.fields["permissions"].widget.attrs["class"] = "form-check-input"
         self.fields["can_assign_bookings"].widget.attrs["class"] = "form-check-input"
@@ -589,6 +609,11 @@ class AdminUserUpdateForm(forms.ModelForm):
             ).exists()
             self.fields["can_manage_users"].initial = self.instance.user_permissions.filter(
                 content_type__app_label="accounts", codename="manage_users"
+            ).exists()
+            self.fields["can_manage_report_releases"].initial = self.instance.user_permissions.filter(
+                content_type__app_label="reports", codename="view_report"
+            ).exists() and self.instance.user_permissions.filter(
+                content_type__app_label="reports", codename="change_report"
             ).exists()
             self.fields["can_assign_bookings"].initial = self.instance.user_permissions.filter(
                 content_type__app_label="bookings", codename="assign_booking"
@@ -638,6 +663,7 @@ class AdminUserUpdateForm(forms.ModelForm):
         can_edit_tinymce_source = bool(self.cleaned_data.get("can_edit_tinymce_source"))
         can_manage_letterheads = bool(self.cleaned_data.get("can_manage_letterheads"))
         can_manage_users = bool(self.cleaned_data.get("can_manage_users"))
+        can_manage_report_releases = bool(self.cleaned_data.get("can_manage_report_releases"))
         can_assign_bookings = bool(self.cleaned_data.get("can_assign_bookings"))
         protected_existing_account = bool(
             self.instance.is_superuser or self.instance.groups.filter(name="Admin").exists()
@@ -746,6 +772,8 @@ class AdminUserUpdateForm(forms.ModelForm):
                 permission = _user_management_permission()
                 if permission:
                     selected_permissions.append(permission)
+            if can_manage_report_releases:
+                selected_permissions.extend(_report_release_permissions())
             if can_assign_bookings:
                 assign_perm = _permission("bookings", "assign_booking")
                 if assign_perm:

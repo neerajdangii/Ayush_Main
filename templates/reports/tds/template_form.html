@@ -96,10 +96,7 @@
         </div>
       </div>
       <div class="col-12">
-        <div class="form-check">
-          {{ form.is_active }}
-          <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Active</label>
-        </div>
+        {% include "partials/active_toggle.html" with field=form.is_active label="Active" %}
       </div>
       <div class="col-12 d-flex gap-2">
         <button class="btn btn-primary" type="submit" id="tds-template-save-btn">Save Template</button>
