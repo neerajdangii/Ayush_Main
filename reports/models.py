@@ -527,8 +527,8 @@ class ReportRelease(models.Model):
         blank=True,
     )
     released_by_name = models.CharField(max_length=255, blank=True)
-    # "Release Date" is the COA analysis-completion date.  "Released On"
-    # remains the timestamp at which the user sends the report.
+    # Snapshot of the COA analysis-completion date when the report is released.
+    # ``released_at`` remains the timestamp at which the user sends the report.
     release_date = models.DateTimeField(null=True, blank=True)
     coa_created_at = models.DateTimeField(null=True, blank=True)
     released_at = models.DateTimeField(default=timezone.now, db_index=True)
@@ -539,6 +539,23 @@ class ReportRelease(models.Model):
 
     class Meta:
         ordering = ["-released_at", "-pk"]
+
+    @property
+    def analysis_end_date_changed(self):
+        """Whether a re-release used a different COA analysis end date."""
+        if not self.has_changes or not self.previous_release_date or not self.release_date:
+            return False
+        previous_date = (
+            timezone.localtime(self.previous_release_date).date()
+            if timezone.is_aware(self.previous_release_date)
+            else self.previous_release_date.date()
+        )
+        current_date = (
+            timezone.localtime(self.release_date).date()
+            if timezone.is_aware(self.release_date)
+            else self.release_date.date()
+        )
+        return previous_date != current_date
 
     def __str__(self) -> str:
         return f"{self.certificate_no or self.sample_registration_no} via {self.get_channel_display()}"

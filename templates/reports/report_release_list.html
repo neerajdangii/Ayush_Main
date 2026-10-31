@@ -64,12 +64,13 @@
 
     <div class="table-responsive">
       <table class="table table-bordered table-striped align-middle">
-        <thead class="table-light"><tr><th>Release Details</th><th>Certificate No</th><th>Batch No</th><th>Booking ID</th><th>Sample Name</th><th>Party</th><th>Channel</th><th>Released By</th><th>Report</th></tr></thead>
+        <thead class="table-light"><tr><th>Release Details</th><th>Analysis End Date</th><th>Certificate No</th><th>Batch No</th><th>Booking ID</th><th>Sample Name</th><th>Party</th><th>Channel</th><th>Released By</th><th>Report</th></tr></thead>
         <tbody>
           {% if selected_release_status == 'pending' %}
           {% for report in releases %}
           <tr class="table-warning">
             <td><span class="badge text-bg-warning">Release Pending</span></td>
+            <td>{{ report.analysis_end_date|date:'d/m/Y'|default:'-' }}</td>
             <td>{{ report.certificate_no|default:'-' }}</td>
             <td>{{ report.booking.batch_no|default:'-' }}</td>
             <td>{{ report.booking.tracking_code|default:'-' }}</td>
@@ -80,16 +81,22 @@
             <td><a class="btn btn-sm btn-outline-primary" href="{% url 'reports:coa_print' report.pk %}" target="_blank" rel="noopener">Open Report</a></td>
           </tr>
           {% empty %}
-          <tr><td colspan="9" class="text-center py-4">No reports are pending release for these filters.</td></tr>
+          <tr><td colspan="10" class="text-center py-4">No reports are pending release for these filters.</td></tr>
           {% endfor %}
           {% else %}
           {% for release in releases %}
-          <tr{% if release.has_changes %} class="table-danger" title="This release was changed after its original release."{% endif %}>
+          <tr{% if release.analysis_end_date_changed %} class="table-danger" title="The analysis end date was changed after the original release."{% elif release.has_changes %} class="table-warning" title="This release was changed after its original release."{% endif %}>
             <td class="text-nowrap">
               <div><strong>Released on:</strong> {{ release.released_at|date:'d/m/Y h:i:s A' }}</div>
               {% if release.has_changes %}
               <hr class="my-1">
               <div><strong>Previous released on:</strong> {{ release.previous_released_at|date:'d/m/Y h:i:s A'|default:'-' }}</div>
+              {% endif %}
+            </td>
+            <td>
+              <div>{{ release.release_date|date:'d/m/Y'|default:'-' }}</div>
+              {% if release.analysis_end_date_changed %}
+              <div class="small text-danger"><strong>Previous:</strong> {{ release.previous_release_date|date:'d/m/Y' }}</div>
               {% endif %}
             </td>
             <td>{{ release.certificate_no|default:'-' }}</td>
@@ -102,7 +109,7 @@
             <td>{% if release.report_url %}<a class="btn btn-sm btn-outline-primary" href="{{ release.report_url }}" target="_blank" rel="noopener">Open Report</a>{% else %}-{% endif %}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="9" class="text-center py-4">No reports have been released for these filters.</td></tr>
+          <tr><td colspan="10" class="text-center py-4">No reports have been released for these filters.</td></tr>
           {% endfor %}
           {% endif %}
         </tbody>

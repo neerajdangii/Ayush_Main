@@ -12,6 +12,8 @@ from .models import ReportRelease
 RELEASE_COLUMNS = (
     ("S. No.", "serial_no"),
     ("Release Date", "release_date"),
+    ("Analysis End Date", "analysis_end_date"),
+    ("Previous Analysis End Date", "previous_analysis_end_date"),
     ("Released On (Date & Time)", "released_on"),
     ("Certificate No", "certificate_no"),
     ("Batch No", "batch_no"),
@@ -30,15 +32,24 @@ def _excel_text(value):
     return text
 
 
-def _release_row(release, *, serial_no, release_date, released_at):
+def _release_row(release, *, serial_no, analysis_end_date, previous_analysis_end_date, released_at):
     local_released_at = timezone.localtime(released_at) if released_at else None
-    local_release_date = timezone.localtime(release_date) if release_date else None
+    local_analysis_end_date = timezone.localtime(analysis_end_date) if analysis_end_date else None
+    local_previous_analysis_end_date = (
+        timezone.localtime(previous_analysis_end_date) if previous_analysis_end_date else None
+    )
     row = []
     for _title, field in RELEASE_COLUMNS:
         if field == "serial_no":
             row.append(serial_no)
         elif field == "release_date":
-            row.append(local_release_date.date() if local_release_date else "")
+            row.append(local_released_at.date() if local_released_at else "")
+        elif field == "analysis_end_date":
+            row.append(local_analysis_end_date.date() if local_analysis_end_date else "")
+        elif field == "previous_analysis_end_date":
+            row.append(
+                local_previous_analysis_end_date.date() if local_previous_analysis_end_date else ""
+            )
         elif field == "released_on":
             row.append(local_released_at.replace(tzinfo=None) if local_released_at else "")
         elif field == "channel":
@@ -66,15 +77,23 @@ def build_release_workbook(releases):
         cell.alignment = Alignment(vertical="center")
     sheet.row_dimensions[1].height = 24
 
+    def format_date_cells(row_index):
+        sheet.cell(row_index, 2).number_format = "dd/mm/yyyy"
+        sheet.cell(row_index, 3).number_format = "dd/mm/yyyy"
+        sheet.cell(row_index, 4).number_format = "dd/mm/yyyy"
+        sheet.cell(row_index, 5).number_format = "dd/mm/yyyy hh:mm:ss AM/PM"
+
     serial_no = 1
     for release in releases:
         if release.has_changes and release.previous_released_at:
             sheet.append(_release_row(
                 release,
                 serial_no=serial_no,
-                release_date=release.previous_release_date,
+                analysis_end_date=release.previous_release_date,
+                previous_analysis_end_date=None,
                 released_at=release.previous_released_at,
             ))
+            format_date_cells(sheet.max_row)
             for cell in sheet[sheet.max_row]:
                 cell.fill = PatternFill("solid", fgColor="FECACA")
             serial_no += 1
@@ -82,14 +101,19 @@ def build_release_workbook(releases):
         sheet.append(_release_row(
             release,
             serial_no=serial_no,
-            release_date=release.release_date,
+            analysis_end_date=release.release_date,
+            previous_analysis_end_date=(
+                release.previous_release_date if release.analysis_end_date_changed else None
+            ),
             released_at=release.released_at,
         ))
+        format_date_cells(sheet.max_row)
+        if release.analysis_end_date_changed:
+            for cell in sheet[sheet.max_row]:
+                cell.fill = PatternFill("solid", fgColor="FFF1F2")
         serial_no += 1
-        sheet.cell(sheet.max_row, 2).number_format = "dd-mmm-yyyy"
-        sheet.cell(sheet.max_row, 3).number_format = "dd-mmm-yyyy hh:mm:ss AM/PM"
 
-    widths = (13, 16, 25, 22, 20, 20, 34, 34, 16, 26)
+    widths = (10, 16, 18, 23, 25, 22, 20, 20, 34, 34, 16, 26)
     for index, width in enumerate(widths, start=1):
         sheet.column_dimensions[get_column_letter(index)].width = width
     sheet.auto_filter.ref = sheet.dimensions

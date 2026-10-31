@@ -10,6 +10,7 @@ from .views import (
     COAPrintView,
     BookingTDSDocumentView,
     PublicCOAPrintView,
+    PublicCOAVerificationView,
     ReportTemplateCreateView,
     ReportTemplateApiListView,
     ReportTemplateContentView,
@@ -66,6 +67,9 @@ urlpatterns = [
     path("<int:pk>/coa/", COAOptionView.as_view(), name="coa_options"),
     path("<int:pk>/coa/edit/", COAEditView.as_view(), name="coa_edit"),
     path("<int:pk>/coa/print/", COAPrintView.as_view(), name="coa_print"),
-    path("public/<int:pk>/", PublicCOAPrintView.as_view(), name="coa_public"),
+    # QR codes open the verification page first; the page's button opens the
+    # public report through this separate URL.
+    path("public/<int:pk>/", PublicCOAVerificationView.as_view(), name="coa_public"),
+    path("public/<int:pk>/report/", PublicCOAPrintView.as_view(), name="coa_public_report"),
     path("<int:pk>/coa/doc/", COAPlainDocumentView.as_view(), name="coa_doc"),
 ]
